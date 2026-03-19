@@ -29,12 +29,10 @@ export async function POST(req: Request) {
     max_tokens: 600,
     messages: [{
       role: 'user',
-      content: `You are helping someone summarize their recent accomplishments for a performance review or status update.
-
-Here are their wins, grouped by category:
+      content: `Here's what someone got done recently, grouped by category:
 ${sections}
 
-Write a confident, polished performance summary. Use the category names as section headers (bold with **Category**). For each category with wins, write 2–3 sentences tying those wins into a narrative. Professional and warm tone — suitable for a performance review or LinkedIn.`
+Write a casual recap of what they accomplished. Use the category names as section headers (bold with **Category**). For each category, write 2–3 sentences summing up what they did — keep it natural and human, like you're telling a friend about a productive stretch. No corporate language, no buzzwords, no "leveraging" or "driving results." Just be real about what got done.`
     }]
   })
 
