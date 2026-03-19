@@ -152,23 +152,6 @@ export default function Home() {
   const isViewingToday = !mounted || selectedDate === todayDate
   const selectedDayName = mounted ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }) : ''
 
-  const fetchPending = useCallback(async (date?: string) => {
-    const d = date ?? getDateForDay(new Date().getDay())
-    const res = await authFetch(`/api/tasks?status=pending&date=${d}`)
-    setPending(await res.json())
-  }, [authFetch])
-
-  const fetchWins = useCallback(async (page = 1, append = false) => {
-    setWinsLoading(true)
-    const res = await authFetch(`/api/tasks?status=completed&page=${page}&limit=${WINS_PER_PAGE}`)
-    const { data, total, hasMore } = await res.json()
-    setWins(prev => append ? [...prev, ...data] : data)
-    setWinsTotal(total)
-    setWinsPage(page)
-    setWinsHasMore(hasMore)
-    setWinsLoading(false)
-  }, [authFetch])
-
   // Auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -190,6 +173,23 @@ export default function Home() {
       },
     })
   }, [session])
+
+  const fetchPending = useCallback(async (date?: string) => {
+    const d = date ?? getDateForDay(new Date().getDay())
+    const res = await authFetch(`/api/tasks?status=pending&date=${d}`)
+    setPending(await res.json())
+  }, [authFetch])
+
+  const fetchWins = useCallback(async (page = 1, append = false) => {
+    setWinsLoading(true)
+    const res = await authFetch(`/api/tasks?status=completed&page=${page}&limit=${WINS_PER_PAGE}`)
+    const { data, total, hasMore } = await res.json()
+    setWins(prev => append ? [...prev, ...data] : data)
+    setWinsTotal(total)
+    setWinsPage(page)
+    setWinsHasMore(hasMore)
+    setWinsLoading(false)
+  }, [authFetch])
 
   // Initialize after mount to avoid SSR/client date mismatch
   useEffect(() => {
