@@ -40,22 +40,22 @@ const WINS_PER_PAGE = 25
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 const LIGHT_GREETINGS = [
-  "you're going to crush it today ✨",
-  "look at you, showing up 🌟",
-  "today's tasks don't stand a chance 💪",
-  "good things incoming — let's go 🌈",
-  "you showed up. that's already a win 🎉",
-  "fresh page, fresh start. let's do this 📋",
-  "your future self is rooting for you 🙌",
+  "you're going to crush it today :D",
+  "look at you, showing up :~)",
+  "today's tasks don't stand a chance >:)",
+  "good things incoming — let's go :-)",
+  "you showed up. that's already a win \\o/",
+  "fresh page, fresh start. let's do this :^)",
+  "your future self is rooting for you (>'-')>",
 ]
 const DARK_GREETINGS = [
-  "tasks: the eternal nemesis returns 🌚",
-  "everything is fine. probably. 🌑",
-  "another day, another list that will haunt you 💀",
+  "tasks: the eternal nemesis returns >_>",
+  "everything is fine. probably. :-|",
+  "another day, another list that will haunt you x_x",
   "the tasks were here before you. they'll outlast you too.",
-  "surviving is also a win 🖤",
-  "somewhere, a to-do list is laughing at us both 🕯️",
-  "hope is the first step. the list is the second. 🌒",
+  "surviving is also a win :-/",
+  "somewhere, a to-do list is laughing at us both ;_;",
+  "hope is the first step. the list is the second. -_-",
 ]
 
 const PRIORITY_CONFIG: Record<number, { color: string; darkColor: string; label: string }> = {
@@ -400,7 +400,7 @@ export default function Home() {
             {/* Streak */}
             {streak.currentStreak > 0 ? (
               <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '56px', lineHeight: 1 }}>🔥</div>
+                <div style={{ fontSize: '40px', lineHeight: 1, fontFamily: 'Georgia, serif' }}>&gt;:)</div>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: '36px', fontWeight: 900, color: coral, lineHeight: 1.1 }}>
                   {streak.currentStreak} day{streak.currentStreak === 1 ? '' : 's'}
                 </div>
@@ -412,7 +412,7 @@ export default function Home() {
               </div>
             ) : (
               <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '40px', lineHeight: 1, marginBottom: '4px' }}>✦</div>
+                <div style={{ fontSize: '32px', lineHeight: 1, marginBottom: '4px', fontFamily: 'Georgia, serif' }}>:-)</div>
                 <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '20px', color: gold }}>
                   start a new streak today
                 </p>
@@ -427,7 +427,7 @@ export default function Home() {
                 </p>
                 {streak.yesterdayWins.slice(0, 5).map((w, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <span style={{ color: coral, fontSize: '12px', flexShrink: 0 }}>✦</span>
+                    <span style={{ color: coral, fontSize: '12px', flexShrink: 0 }}>~</span>
                     <span style={{ fontFamily: 'var(--font-caveat)', fontSize: '17px', color: textPrimary }}>{w.text}</span>
                   </div>
                 ))}
@@ -465,7 +465,7 @@ export default function Home() {
                 <h1 style={{ fontSize: '36px', color: coral, fontFamily: 'Georgia, serif', fontWeight: 900, lineHeight: 1, margin: 0 }}>TALLY</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
-                    {dark ? '☀️' : '🌙'}
+                    {dark ? '*' : 'o'}
                   </button>
                   <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
                     Sign out
@@ -506,7 +506,7 @@ export default function Home() {
                   })}
                 </div>
                 <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
-                  {dark ? '☀️' : '🌙'}
+                  {dark ? '*' : 'o'}
                 </button>
                 <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
                   Sign out
@@ -546,7 +546,7 @@ export default function Home() {
                 <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>{isViewingToday ? "Today's Tasks" : `${selectedDayName}'s Tasks`}</div>
 
                 {sortedPending.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-caveat)', fontSize: '22px', color: gold }}>{isViewingToday ? 'nothing left — nice work ✓' : `nothing planned for ${selectedDayName} yet`}</div>
+                  <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-caveat)', fontSize: '22px', color: gold }}>{isViewingToday ? 'nothing left — nice work :-)' : `nothing planned for ${selectedDayName} yet`}</div>
                 ) : sortedPending.map((task, i) => {
                   const p = task.priority ?? 2
                   const pc = dark ? PRIORITY_CONFIG[p].darkColor : PRIORITY_CONFIG[p].color
@@ -561,7 +561,7 @@ export default function Home() {
                         {enhancing === task.id && <div className="animate-pulse rounded-full" style={{ width: '8px', height: '8px', backgroundColor: gold }} />}
                       </button>
                       <span style={{ flex: 1, fontFamily: 'var(--font-caveat)', fontSize: '21px', color: completing === task.id ? '#6db08a' : enhancing === task.id ? textMuted : textPrimary, fontStyle: enhancing === task.id ? 'italic' : 'normal' }}>
-                        {completing === task.id ? 'moving to wins ✦' : enhancing === task.id ? 'logging this one...' : task.title}
+                        {completing === task.id ? 'moving to wins ~' : enhancing === task.id ? 'logging this one...' : task.title}
                       </span>
                       {p === 1 && <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: pc, textTransform: 'uppercase', flexShrink: 0 }}>High</span>}
                       <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100" style={{ color: dark ? '#5a4f40' : '#d4a8a0', fontSize: '18px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s' }}>×</button>
@@ -576,7 +576,7 @@ export default function Home() {
               <div>
                 {winsTotal === 0 && !winsLoading ? (
                   <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-caveat)', fontSize: '22px', color: gold }}>
-                    complete tasks to start logging wins 🏆
+                    complete tasks to start logging wins :-)
                   </div>
                 ) : (
                   <>
@@ -592,7 +592,7 @@ export default function Home() {
                       </div>
 
                       <button onClick={generateRecap} disabled={recapLoading} style={{ width: '100%', padding: '11px', border: `2px dashed ${gold}`, color: gold, background: 'transparent', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                        {recapLoading ? 'writing your recap...' : `✦ Recap — ${PERIOD_LABELS[recapPeriod]}`}
+                        {recapLoading ? 'writing your recap...' : `~ Recap — ${PERIOD_LABELS[recapPeriod]}`}
                       </button>
 
                       {recap && (
@@ -611,7 +611,7 @@ export default function Home() {
                         <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>{date}</p>
                         {dayWins.map(task => (
                           <div key={task.id} className="group" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: `1px solid ${line}`, padding: '11px 0' }}>
-                            <span style={{ color: coral, marginTop: '3px', flexShrink: 0 }}>✦</span>
+                            <span style={{ color: coral, marginTop: '3px', flexShrink: 0 }}>~</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '2px' }}>
                                 <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '21px', color: textPrimary, lineHeight: 1.3, margin: 0 }}>
@@ -662,7 +662,7 @@ export default function Home() {
             {/* Streak */}
             {streak && streak.currentStreak > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 12px', backgroundColor: dark ? 'rgba(201,79,56,0.1)' : 'rgba(201,79,56,0.06)', borderRadius: '6px', border: `1px solid ${dark ? 'rgba(201,79,56,0.2)' : 'rgba(201,79,56,0.12)'}` }}>
-                <span style={{ fontSize: '22px', lineHeight: 1 }}>🔥</span>
+                <span style={{ fontSize: '18px', lineHeight: 1, fontFamily: 'Georgia, serif' }}>&gt;:)</span>
                 <div>
                   <div style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 900, color: coral, lineHeight: 1 }}>
                     {streak.currentStreak}
