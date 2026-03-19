@@ -19,6 +19,13 @@ interface Task {
   due_date: string | null
 }
 
+interface StreakData {
+  currentStreak: number
+  longestStreak: number
+  todayActive: boolean
+  yesterdayWins: { text: string; category: string }[]
+}
+
 function getDateForDay(dayIndex: number): string {
   const today = new Date()
   const diff = dayIndex - today.getDay()
@@ -146,6 +153,8 @@ export default function Home() {
   const [selectedDay, setSelectedDay] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [streak, setStreak] = useState<StreakData | null>(null)
+  const [showBriefing, setShowBriefing] = useState(false)
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -223,6 +232,28 @@ export default function Home() {
     setGreeting(list[Math.floor(Math.random() * list.length)])
   }, [dark])
 
+  // Fetch streak data and show morning briefing once per day
+  useEffect(() => {
+    if (!session) return
+    authFetch('/api/streak')
+      .then(r => r.json())
+      .then((data: StreakData) => {
+        setStreak(data)
+        const todayKey = new Date().toISOString().split('T')[0]
+        const lastSeen = localStorage.getItem('tally-briefing-date')
+        if (lastSeen !== todayKey) {
+          setShowBriefing(true)
+        }
+      })
+      .catch(() => {})
+  }, [session, authFetch])
+
+  function dismissBriefing() {
+    const todayKey = new Date().toISOString().split('T')[0]
+    localStorage.setItem('tally-briefing-date', todayKey)
+    setShowBriefing(false)
+  }
+
   async function addTask(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim()) return
@@ -252,6 +283,8 @@ export default function Home() {
       await new Promise(r => setTimeout(r, 600))
       await fetchPending(selectedDate)
       await fetchWins(1)
+      // Refresh streak after completing a task
+      authFetch('/api/streak').then(r => r.json()).then(setStreak).catch(() => {})
       setCompleting(null)
     } catch {
       setEnhancing(null)
@@ -352,6 +385,76 @@ export default function Home() {
 
   return (
     <main style={{ minHeight: '100vh', backgroundColor: bg, backgroundImage: `repeating-linear-gradient(transparent, transparent 39px, ${line} 39px, ${line} 40px)`, transition: 'background-color 0.4s' }}>
+
+      {/* Morning Briefing Overlay */}
+      {showBriefing && streak && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '16px' }}>
+          <div style={{ backgroundColor: paper, borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.25)', maxWidth: '420px', width: '100%', padding: 'clamp(24px, 6vw, 40px)', textAlign: 'center', transition: 'background-color 0.4s' }}>
+            <p style={{ fontSize: '14px', color: textMuted, marginBottom: '4px' }}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+            <h2 style={{ fontFamily: 'var(--font-caveat)', fontSize: '32px', color: textPrimary, margin: '0 0 20px', lineHeight: 1.2 }}>
+              good morning
+            </h2>
+
+            {/* Streak */}
+            {streak.currentStreak > 0 ? (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '56px', lineHeight: 1 }}>🔥</div>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: '36px', fontWeight: 900, color: coral, lineHeight: 1.1 }}>
+                  {streak.currentStreak} day{streak.currentStreak === 1 ? '' : 's'}
+                </div>
+                <p style={{ fontSize: '12px', color: textMuted, letterSpacing: '0.06em', marginTop: '4px' }}>
+                  {streak.currentStreak >= streak.longestStreak && streak.currentStreak > 1
+                    ? "that's your longest streak!"
+                    : `longest: ${streak.longestStreak} days`}
+                </p>
+              </div>
+            ) : (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '40px', lineHeight: 1, marginBottom: '4px' }}>✦</div>
+                <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '20px', color: gold }}>
+                  start a new streak today
+                </p>
+              </div>
+            )}
+
+            {/* Yesterday's wins */}
+            {streak.yesterdayWins.length > 0 && (
+              <div style={{ textAlign: 'left', marginBottom: '20px', backgroundColor: dark ? '#1f1c17' : '#fdf6e3', border: `1px solid ${line}`, borderRadius: '6px', padding: '14px 16px' }}>
+                <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>
+                  Yesterday&apos;s wins
+                </p>
+                {streak.yesterdayWins.slice(0, 5).map((w, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ color: coral, fontSize: '12px', flexShrink: 0 }}>✦</span>
+                    <span style={{ fontFamily: 'var(--font-caveat)', fontSize: '17px', color: textPrimary }}>{w.text}</span>
+                  </div>
+                ))}
+                {streak.yesterdayWins.length > 5 && (
+                  <p style={{ fontSize: '11px', color: textMuted, marginTop: '4px' }}>
+                    +{streak.yesterdayWins.length - 5} more
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Today's tasks count */}
+            {pending.length > 0 && (
+              <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '18px', color: textMuted, marginBottom: '20px' }}>
+                {pending.length} task{pending.length === 1 ? '' : 's'} lined up for today
+              </p>
+            )}
+
+            <button onClick={dismissBriefing} style={{ padding: '12px 32px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+              Let&apos;s go
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto min-h-screen" style={{ maxWidth: '960px', backgroundColor: paper, boxShadow: '0 0 40px rgba(0,0,0,0.15)', transition: 'background-color 0.4s', position: 'relative', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
@@ -555,6 +658,21 @@ export default function Home() {
             </>}
             {weather && <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '16px', color: textMuted, marginBottom: '16px' }}>{weather}</p>}
             {greeting && <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '17px', color: dark ? gold : '#8a7560', fontStyle: 'italic', lineHeight: 1.4, marginBottom: '24px' }}>{greeting}</p>}
+
+            {/* Streak */}
+            {streak && streak.currentStreak > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 12px', backgroundColor: dark ? 'rgba(201,79,56,0.1)' : 'rgba(201,79,56,0.06)', borderRadius: '6px', border: `1px solid ${dark ? 'rgba(201,79,56,0.2)' : 'rgba(201,79,56,0.12)'}` }}>
+                <span style={{ fontSize: '22px', lineHeight: 1 }}>🔥</span>
+                <div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 900, color: coral, lineHeight: 1 }}>
+                    {streak.currentStreak}
+                  </div>
+                  <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: textMuted, marginTop: '1px' }}>
+                    day streak
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{ height: '1px', backgroundColor: line, marginBottom: '24px' }} />
 
