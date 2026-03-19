@@ -392,10 +392,25 @@ export default function Home() {
   async function addRecurring(e: React.FormEvent) {
     e.preventDefault()
     if (!recurringInput.trim()) return
+    const title = recurringInput.trim()
+    const freq = recurringFreq
+    const days = recurringFreq === 'weekly' ? recurringDays : []
     await authFetch('/api/recurring', {
       method: 'POST',
-      body: JSON.stringify({ title: recurringInput.trim(), frequency: recurringFreq, days_of_week: recurringFreq === 'weekly' ? recurringDays : [] }),
+      body: JSON.stringify({ title, frequency: freq, days_of_week: days }),
     })
+    // Immediately spawn the task for today if it matches the schedule
+    const todayDow = new Date().getDay()
+    const shouldSpawnToday = freq === 'daily' || (freq === 'weekly' && days.includes(todayDow))
+    if (shouldSpawnToday) {
+      const today = new Date().toISOString().split('T')[0]
+      // Check if a task with this title already exists for today
+      const existing = pending.find(t => t.title === title)
+      if (!existing) {
+        await authFetch('/api/tasks', { method: 'POST', body: JSON.stringify({ title, due_date: today }) })
+        await fetchPending(selectedDate)
+      }
+    }
     setRecurringInput('')
     setRecurringDays([])
     setShowRecurringForm(false)
