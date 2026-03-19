@@ -199,15 +199,16 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted || !session) return
     fetchPending(selectedDate)
-  }, [selectedDay, mounted, fetchPending, selectedDate])
+  }, [selectedDay, mounted, fetchPending, selectedDate, session])
 
   useEffect(() => {
+    if (!session) return
     fetchWins(1)
     fetch('https://wttr.in/?format=%C,+%t&u', { signal: AbortSignal.timeout(4000) })
       .then(r => r.text()).then(t => setWeather(t.trim())).catch(() => {})
-  }, [fetchWins])
+  }, [fetchWins, session])
 
   useEffect(() => {
     const list = dark ? DARK_GREETINGS : LIGHT_GREETINGS
