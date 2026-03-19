@@ -40,22 +40,22 @@ const WINS_PER_PAGE = 25
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 const LIGHT_GREETINGS = [
-  "you're going to crush it today :D",
-  "look at you, showing up :~)",
-  "today's tasks don't stand a chance >:)",
-  "good things incoming — let's go :-)",
-  "you showed up. that's already a win \\o/",
-  "fresh page, fresh start. let's do this :^)",
-  "your future self is rooting for you (>'-')>",
+  "you're going to crush it today",
+  "look at you, showing up",
+  "today's tasks don't stand a chance",
+  "good things incoming — let's go",
+  "you showed up. that's already a win",
+  "fresh page, fresh start. let's do this",
+  "your future self is rooting for you",
 ]
 const DARK_GREETINGS = [
-  "tasks: the eternal nemesis returns >_>",
-  "everything is fine. probably. :-|",
-  "another day, another list that will haunt you x_x",
+  "tasks: the eternal nemesis returns",
+  "everything is fine. probably.",
+  "another day, another list that will haunt you",
   "the tasks were here before you. they'll outlast you too.",
-  "surviving is also a win :-/",
-  "somewhere, a to-do list is laughing at us both ;_;",
-  "hope is the first step. the list is the second. -_-",
+  "surviving is also a win",
+  "somewhere, a to-do list is laughing at us both",
+  "hope is the first step. the list is the second.",
 ]
 
 const PRIORITY_CONFIG: Record<number, { color: string; darkColor: string; label: string }> = {
@@ -388,8 +388,8 @@ export default function Home() {
 
       {/* Morning Briefing Overlay */}
       {showBriefing && streak && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '16px' }}>
-          <div style={{ backgroundColor: paper, borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.25)', maxWidth: '420px', width: '100%', padding: 'clamp(24px, 6vw, 40px)', textAlign: 'center', transition: 'background-color 0.4s' }}>
+        <div className="briefing-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '16px' }}>
+          <div className="briefing-card" style={{ backgroundColor: paper, borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.25)', maxWidth: '420px', width: '100%', padding: 'clamp(24px, 6vw, 40px)', textAlign: 'center', transition: 'background-color 0.4s' }}>
             <p style={{ fontSize: '14px', color: textMuted, marginBottom: '4px' }}>
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
@@ -400,19 +400,20 @@ export default function Home() {
             {/* Streak */}
             {streak.currentStreak > 0 ? (
               <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '40px', lineHeight: 1, fontFamily: 'Georgia, serif' }}>&gt;:)</div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: '36px', fontWeight: 900, color: coral, lineHeight: 1.1 }}>
-                  {streak.currentStreak} day{streak.currentStreak === 1 ? '' : 's'}
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: '42px', fontWeight: 900, color: coral, lineHeight: 1.1 }}>
+                  {streak.currentStreak}
                 </div>
-                <p style={{ fontSize: '12px', color: textMuted, letterSpacing: '0.06em', marginTop: '4px' }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: textMuted, marginTop: '2px' }}>
+                  day streak
+                </p>
+                <p style={{ fontSize: '12px', color: textMuted, marginTop: '6px' }}>
                   {streak.currentStreak >= streak.longestStreak && streak.currentStreak > 1
-                    ? "that's your longest streak!"
-                    : `longest: ${streak.longestStreak} days`}
+                    ? "your longest yet"
+                    : `best: ${streak.longestStreak}`}
                 </p>
               </div>
             ) : (
               <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '32px', lineHeight: 1, marginBottom: '4px', fontFamily: 'Georgia, serif' }}>:-)</div>
                 <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '20px', color: gold }}>
                   start a new streak today
                 </p>
@@ -423,11 +424,11 @@ export default function Home() {
             {streak.yesterdayWins.length > 0 && (
               <div style={{ textAlign: 'left', marginBottom: '20px', backgroundColor: dark ? '#1f1c17' : '#fdf6e3', border: `1px solid ${line}`, borderRadius: '6px', padding: '14px 16px' }}>
                 <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>
-                  Yesterday&apos;s wins
+                  Yesterday
                 </p>
                 {streak.yesterdayWins.slice(0, 5).map((w, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <span style={{ color: coral, fontSize: '12px', flexShrink: 0 }}>~</span>
+                  <div key={i} className="win-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', animationDelay: `${i * 0.08}s` }}>
+                    <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0 }}><circle cx="3" cy="3" r="3" fill={coral} opacity="0.5" /></svg>
                     <span style={{ fontFamily: 'var(--font-caveat)', fontSize: '17px', color: textPrimary }}>{w.text}</span>
                   </div>
                 ))}
@@ -446,9 +447,9 @@ export default function Home() {
               </p>
             )}
 
-            <button onClick={dismissBriefing} style={{ padding: '12px 32px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'opacity 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+            <button onClick={dismissBriefing} className="btn-press" style={{ padding: '12px 32px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.2s', boxShadow: '0 2px 8px rgba(201,79,56,0.3)' }}
+              onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(201,79,56,0.4)')}
+              onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(201,79,56,0.3)')}>
               Let&apos;s go
             </button>
           </div>
@@ -464,10 +465,13 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <h1 style={{ fontSize: '36px', color: coral, fontFamily: 'Georgia, serif', fontWeight: 900, lineHeight: 1, margin: 0 }}>TALLY</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
-                    {dark ? '*' : 'o'}
+                  <button onClick={() => setDark(d => !d)} className="theme-toggle" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '4px', display: 'flex', alignItems: 'center' }}>
+                    {dark
+                      ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.5" stroke={gold} strokeWidth="1.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.06 1.06M11.54 11.54l1.06 1.06M3.4 12.6l1.06-1.06M11.54 4.46l1.06-1.06" stroke={gold} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 1014 9.5z" stroke={gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    }
                   </button>
-                  <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
+                  <button onClick={() => supabase.auth.signOut()} className="btn-press" style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s' }} onMouseEnter={e => { e.currentTarget.style.color = coral; e.currentTarget.style.borderColor = coral }} onMouseLeave={e => { e.currentTarget.style.color = textMuted; e.currentTarget.style.borderColor = line }}>
                     Sign out
                   </button>
                 </div>
@@ -505,10 +509,13 @@ export default function Home() {
                     )
                   })}
                 </div>
-                <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
-                  {dark ? '*' : 'o'}
+                <button onClick={() => setDark(d => !d)} className="theme-toggle" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '4px', display: 'flex', alignItems: 'center' }}>
+                  {dark
+                    ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.5" stroke={gold} strokeWidth="1.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.06 1.06M11.54 11.54l1.06 1.06M3.4 12.6l1.06-1.06M11.54 4.46l1.06-1.06" stroke={gold} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 1014 9.5z" stroke={gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  }
                 </button>
-                <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
+                <button onClick={() => supabase.auth.signOut()} className="btn-press" style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s' }} onMouseEnter={e => { e.currentTarget.style.color = coral; e.currentTarget.style.borderColor = coral }} onMouseLeave={e => { e.currentTarget.style.color = textMuted; e.currentTarget.style.borderColor = line }}>
                   Sign out
                 </button>
               </div>
@@ -527,7 +534,7 @@ export default function Home() {
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: `2px solid ${line}`, marginBottom: '20px' }}>
               {(['tasks', 'wins'] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px 20px 10px', marginBottom: '-2px', border: 'none', borderBottom: activeTab === tab ? `2px solid ${coral}` : '2px solid transparent', color: activeTab === tab ? coral : textMuted, background: 'none', cursor: 'pointer' }}>
+                <button key={tab} onClick={() => setActiveTab(tab)} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px 20px 10px', marginBottom: '-2px', border: 'none', borderBottom: activeTab === tab ? `2px solid ${coral}` : '2px solid transparent', color: activeTab === tab ? coral : textMuted, background: 'none', cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s' }}>
                   {tab === 'tasks' ? `Tasks${pending.length > 0 ? ` (${pending.length})` : ''}` : winsTotal > 0 ? `Wins (${winsTotal})` : 'Wins'}
                 </button>
               ))}
@@ -538,7 +545,9 @@ export default function Home() {
               <div>
                 <form onSubmit={addTask} style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
                   <input value={input} onChange={e => setInput(e.target.value)} placeholder={isViewingToday ? "what needs to get done today?" : `planning ahead for ${selectedDayName}...`} style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, padding: '6px 0', fontSize: isMobile ? '16px' : '19px', color: textPrimary, fontFamily: 'var(--font-caveat)', outline: 'none' }} />
-                  <button type="submit" disabled={loading || !input.trim()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 16px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: loading || !input.trim() ? 0.3 : 1, transition: 'opacity 0.2s' }}>
+                  <button type="submit" disabled={loading || !input.trim()} className="btn-press" style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 16px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: loading || !input.trim() ? 0.3 : 1, transition: 'opacity 0.2s, box-shadow 0.2s', boxShadow: '0 1px 4px rgba(201,79,56,0.2)' }}
+                    onMouseEnter={e => { if (!loading && input.trim()) e.currentTarget.style.boxShadow = '0 3px 10px rgba(201,79,56,0.35)' }}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 4px rgba(201,79,56,0.2)')}>
                     {loading ? '...' : 'Add'}
                   </button>
                 </form>
@@ -546,25 +555,31 @@ export default function Home() {
                 <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>{isViewingToday ? "Today's Tasks" : `${selectedDayName}'s Tasks`}</div>
 
                 {sortedPending.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-caveat)', fontSize: '22px', color: gold }}>{isViewingToday ? 'nothing left — nice work :-)' : `nothing planned for ${selectedDayName} yet`}</div>
+                  <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-caveat)', fontSize: '22px', color: gold }}>{isViewingToday ? 'nothing left — nice work' : `nothing planned for ${selectedDayName} yet`}</div>
                 ) : sortedPending.map((task, i) => {
                   const p = task.priority ?? 2
                   const pc = dark ? PRIORITY_CONFIG[p].darkColor : PRIORITY_CONFIG[p].color
                   return (
-                    <div key={task.id} className="group" style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s' }}>
+                    <div key={task.id} className={`group ${completing !== task.id ? 'task-row' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s', animationDelay: `${i * 0.05}s` }}>
                       <span style={{ fontSize: '11px', color: gold, width: '16px', flexShrink: 0, textAlign: 'right' }}>{i + 1}</span>
-                      <button onClick={() => cyclePriority(task)} title={`${PRIORITY_CONFIG[p].label} — click to change`} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0 }}>
+                      <button onClick={() => cyclePriority(task)} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
                         <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
                       </button>
-                      <button onClick={() => completeTask(task)} disabled={!!enhancing} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${completing === task.id ? '#6db08a' : gold}`, background: completing === task.id ? '#6db08a' : 'transparent', cursor: enhancing ? 'default' : 'pointer', opacity: enhancing && enhancing !== task.id ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
-                        {completing === task.id && <span style={{ color: '#fff', fontSize: '11px' }}>✓</span>}
+                      <button onClick={() => completeTask(task)} disabled={!!enhancing} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${completing === task.id ? '#6db08a' : gold}`, background: completing === task.id ? '#6db08a' : 'transparent', cursor: enhancing ? 'default' : 'pointer', opacity: enhancing && enhancing !== task.id ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s' }}
+                        onMouseEnter={e => { if (!enhancing) e.currentTarget.style.borderColor = '#6db08a' }}
+                        onMouseLeave={e => { if (!enhancing && completing !== task.id) e.currentTarget.style.borderColor = gold }}>
+                        {completing === task.id && <span className="check-pop" style={{ color: '#fff', fontSize: '11px', lineHeight: 1 }}>
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 3.5L3.5 6.5L9 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </span>}
                         {enhancing === task.id && <div className="animate-pulse rounded-full" style={{ width: '8px', height: '8px', backgroundColor: gold }} />}
                       </button>
-                      <span style={{ flex: 1, fontFamily: 'var(--font-caveat)', fontSize: '21px', color: completing === task.id ? '#6db08a' : enhancing === task.id ? textMuted : textPrimary, fontStyle: enhancing === task.id ? 'italic' : 'normal' }}>
-                        {completing === task.id ? 'moving to wins ~' : enhancing === task.id ? 'logging this one...' : task.title}
+                      <span style={{ flex: 1, fontFamily: 'var(--font-caveat)', fontSize: '21px', color: completing === task.id ? '#6db08a' : enhancing === task.id ? textMuted : textPrimary, fontStyle: enhancing === task.id ? 'italic' : 'normal', transition: 'color 0.3s' }}>
+                        {completing === task.id ? 'moving to wins' : enhancing === task.id ? 'logging this one...' : task.title}
                       </span>
                       {p === 1 && <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: pc, textTransform: 'uppercase', flexShrink: 0 }}>High</span>}
-                      <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100" style={{ color: dark ? '#5a4f40' : '#d4a8a0', fontSize: '18px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s' }}>×</button>
+                      <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 btn-press" style={{ color: dark ? '#5a4f40' : '#d4a8a0', fontSize: '18px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s, color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = dark ? '#5a4f40' : '#d4a8a0')}>
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      </button>
                     </div>
                   )
                 })}
@@ -576,7 +591,7 @@ export default function Home() {
               <div>
                 {winsTotal === 0 && !winsLoading ? (
                   <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-caveat)', fontSize: '22px', color: gold }}>
-                    complete tasks to start logging wins :-)
+                    complete tasks to start logging wins
                   </div>
                 ) : (
                   <>
@@ -591,8 +606,8 @@ export default function Home() {
                         ))}
                       </div>
 
-                      <button onClick={generateRecap} disabled={recapLoading} style={{ width: '100%', padding: '11px', border: `2px dashed ${gold}`, color: gold, background: 'transparent', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                        {recapLoading ? 'writing your recap...' : `~ Recap — ${PERIOD_LABELS[recapPeriod]}`}
+                      <button onClick={generateRecap} disabled={recapLoading} className={`btn-press ${recapLoading ? 'recap-loading' : ''}`} style={{ width: '100%', padding: '11px', border: `2px dashed ${gold}`, borderLeftWidth: '3px', borderLeftStyle: 'solid', color: gold, background: 'transparent', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.7 : 1, transition: 'opacity 0.2s, border-color 0.2s' }}>
+                        {recapLoading ? 'writing your recap...' : `Recap — ${PERIOD_LABELS[recapPeriod]}`}
                       </button>
 
                       {recap && (
@@ -610,8 +625,8 @@ export default function Home() {
                       <div key={date} style={{ marginBottom: '20px' }}>
                         <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>{date}</p>
                         {dayWins.map(task => (
-                          <div key={task.id} className="group" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: `1px solid ${line}`, padding: '11px 0' }}>
-                            <span style={{ color: coral, marginTop: '3px', flexShrink: 0 }}>~</span>
+                          <div key={task.id} className="group win-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: `1px solid ${line}`, padding: '11px 0' }}>
+                            <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0, marginTop: '10px' }}><circle cx="3" cy="3" r="3" fill={coral} opacity="0.6" /></svg>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '2px' }}>
                                 <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '21px', color: textPrimary, lineHeight: 1.3, margin: 0 }}>
@@ -661,14 +676,16 @@ export default function Home() {
 
             {/* Streak */}
             {streak && streak.currentStreak > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 12px', backgroundColor: dark ? 'rgba(201,79,56,0.1)' : 'rgba(201,79,56,0.06)', borderRadius: '6px', border: `1px solid ${dark ? 'rgba(201,79,56,0.2)' : 'rgba(201,79,56,0.12)'}` }}>
-                <span style={{ fontSize: '18px', lineHeight: 1, fontFamily: 'Georgia, serif' }}>&gt;:)</span>
+              <div className="streak-hover" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '10px 12px', backgroundColor: dark ? 'rgba(201,79,56,0.1)' : 'rgba(201,79,56,0.06)', borderRadius: '6px', border: `1px solid ${dark ? 'rgba(201,79,56,0.2)' : 'rgba(201,79,56,0.12)'}`, cursor: 'default', transition: 'border-color 0.3s' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: coral, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 900, fontFamily: 'Georgia, serif', lineHeight: 1 }}>{streak.currentStreak}</span>
+                </div>
                 <div>
-                  <div style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 900, color: coral, lineHeight: 1 }}>
-                    {streak.currentStreak}
-                  </div>
-                  <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: textMuted, marginTop: '1px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: coral, lineHeight: 1.2 }}>
                     day streak
+                  </div>
+                  <div style={{ fontSize: '10px', color: textMuted, marginTop: '1px' }}>
+                    best: {streak.longestStreak}
                   </div>
                 </div>
               </div>
