@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Patrick_Hand } from 'next/font/google'
 import './globals.css'
 
@@ -7,6 +7,11 @@ const caveat = Patrick_Hand({ subsets: ['latin'], weight: '400', variable: '--fo
 export const metadata: Metadata = {
   title: 'Tally',
   description: 'Track tasks. Own your wins.',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

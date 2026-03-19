@@ -145,6 +145,7 @@ export default function Home() {
   const [greeting, setGreeting] = useState('')
   const [selectedDay, setSelectedDay] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -196,6 +197,13 @@ export default function Home() {
     const day = new Date().getDay()
     setSelectedDay(day)
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
   }, [])
 
   useEffect(() => {
@@ -311,7 +319,7 @@ export default function Home() {
 
   if (!session) return (
     <main style={{ minHeight: '100vh', backgroundColor: '#f7f1e3', backgroundImage: 'repeating-linear-gradient(transparent, transparent 39px, #e2d5be 39px, #e2d5be 40px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ backgroundColor: '#faf6ed', boxShadow: '0 0 40px rgba(0,0,0,0.15)', borderRadius: '4px', padding: '48px 56px', textAlign: 'center', maxWidth: '380px', width: '100%' }}>
+      <div style={{ backgroundColor: '#faf6ed', boxShadow: '0 0 40px rgba(0,0,0,0.15)', borderRadius: '4px', padding: 'clamp(28px, 7vw, 48px) clamp(20px, 8vw, 56px)', textAlign: 'center', maxWidth: '380px', width: '100%', margin: '0 16px' }}>
         <h1 style={{ fontSize: '48px', color: '#c94f38', fontFamily: 'Georgia, serif', fontWeight: 900, margin: '0 0 8px' }}>TALLY</h1>
         <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '19px', color: '#b09878', marginBottom: '36px' }}>track tasks. own your wins.</p>
         <button
@@ -332,17 +340,27 @@ export default function Home() {
       <div className="mx-auto min-h-screen" style={{ maxWidth: '960px', backgroundColor: paper, boxShadow: '0 0 40px rgba(0,0,0,0.15)', transition: 'background-color 0.4s', position: 'relative', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
-        <div style={{ backgroundColor: dark ? '#1f1c17' : '#f7f1e3', borderBottom: `3px solid ${gold}`, padding: '20px 32px 16px', transition: 'background-color 0.4s', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h1 style={{ fontSize: '48px', color: coral, fontFamily: 'Georgia, serif', fontWeight: 900, lineHeight: 1, margin: 0 }}>TALLY</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ backgroundColor: dark ? '#1f1c17' : '#f7f1e3', borderBottom: `3px solid ${gold}`, padding: isMobile ? '12px 16px 10px' : '20px 32px 16px', transition: 'background-color 0.4s', position: 'relative', zIndex: 1 }}>
+          {isMobile ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <h1 style={{ fontSize: '36px', color: coral, fontFamily: 'Georgia, serif', fontWeight: 900, lineHeight: 1, margin: 0 }}>TALLY</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
+                    {dark ? '☀️' : '🌙'}
+                  </button>
+                  <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
+                    Sign out
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
                 {DAYS.map((d, i) => {
                   const isToday = mounted && i === todayDay
                   const isSelected = mounted && i === selectedDay
                   return (
                     <button key={i} onClick={() => setSelectedDay(i)}
-                      style={{ width: '28px', height: '28px', borderRadius: '50%', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s', backgroundColor: isToday ? coral : 'transparent', color: isToday ? '#fff' : isSelected ? coral : gold, border: isToday ? 'none' : isSelected ? `2px solid ${coral}` : `1.5px solid ${line}`, outline: 'none' }}
+                      style={{ width: '34px', height: '34px', borderRadius: '50%', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s', backgroundColor: isToday ? coral : 'transparent', color: isToday ? '#fff' : isSelected ? coral : gold, border: isToday ? 'none' : isSelected ? `2px solid ${coral}` : `1.5px solid ${line}`, outline: 'none' }}
                       onMouseEnter={e => { if (!isToday) { e.currentTarget.style.borderColor = coral; e.currentTarget.style.color = coral; e.currentTarget.style.transform = 'scale(1.15)' } }}
                       onMouseLeave={e => { if (!isToday) { e.currentTarget.style.borderColor = isSelected ? coral : line; e.currentTarget.style.color = isSelected ? coral : gold; e.currentTarget.style.transform = 'scale(1)' } }}>
                       {d}
@@ -350,23 +368,43 @@ export default function Home() {
                   )
                 })}
               </div>
-              <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
-                {dark ? '☀️' : '🌙'}
-              </button>
-              <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
-                Sign out
-              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h1 style={{ fontSize: '48px', color: coral, fontFamily: 'Georgia, serif', fontWeight: 900, lineHeight: 1, margin: 0 }}>TALLY</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {DAYS.map((d, i) => {
+                    const isToday = mounted && i === todayDay
+                    const isSelected = mounted && i === selectedDay
+                    return (
+                      <button key={i} onClick={() => setSelectedDay(i)}
+                        style={{ width: '28px', height: '28px', borderRadius: '50%', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s', backgroundColor: isToday ? coral : 'transparent', color: isToday ? '#fff' : isSelected ? coral : gold, border: isToday ? 'none' : isSelected ? `2px solid ${coral}` : `1.5px solid ${line}`, outline: 'none' }}
+                        onMouseEnter={e => { if (!isToday) { e.currentTarget.style.borderColor = coral; e.currentTarget.style.color = coral; e.currentTarget.style.transform = 'scale(1.15)' } }}
+                        onMouseLeave={e => { if (!isToday) { e.currentTarget.style.borderColor = isSelected ? coral : line; e.currentTarget.style.color = isSelected ? coral : gold; e.currentTarget.style.transform = 'scale(1)' } }}>
+                        {d}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
+                  {dark ? '☀️' : '🌙'}
+                </button>
+                <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
+                  Sign out
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <TornEdge fill={paper} />
 
         {/* Two-column body */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', position: 'relative', zIndex: 1, flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 260px', position: 'relative', zIndex: 1, flex: 1 }}>
 
           {/* Main panel */}
-          <div style={{ padding: '24px 32px 48px', borderRight: `1px solid ${line}` }}>
+          <div style={{ padding: isMobile ? '16px 16px 32px' : '24px 32px 48px', borderRight: isMobile ? 'none' : `1px solid ${line}` }}>
 
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: `2px solid ${line}`, marginBottom: '20px' }}>
@@ -381,7 +419,7 @@ export default function Home() {
             {activeTab === 'tasks' && (
               <div>
                 <form onSubmit={addTask} style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-                  <input value={input} onChange={e => setInput(e.target.value)} placeholder={isViewingToday ? "what needs to get done today?" : `planning ahead for ${selectedDayName}...`} style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, padding: '6px 0', fontSize: '19px', color: textPrimary, fontFamily: 'var(--font-caveat)', outline: 'none' }} />
+                  <input value={input} onChange={e => setInput(e.target.value)} placeholder={isViewingToday ? "what needs to get done today?" : `planning ahead for ${selectedDayName}...`} style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, padding: '6px 0', fontSize: isMobile ? '16px' : '19px', color: textPrimary, fontFamily: 'var(--font-caveat)', outline: 'none' }} />
                   <button type="submit" disabled={loading || !input.trim()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 16px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: loading || !input.trim() ? 0.3 : 1, transition: 'opacity 0.2s' }}>
                     {loading ? '...' : 'Add'}
                   </button>
@@ -464,7 +502,7 @@ export default function Home() {
                                 <CategoryBadge category={task.category} dark={dark} />
                               </div>
                               {task.win_statement && (
-                                <p style={{ fontSize: '11px', color: textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from: {task.title}</p>
+                                <p style={{ fontSize: '11px', color: textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '220px' : '100%' }}>from: {task.title}</p>
                               )}
                             </div>
                             {/* Trash */}
@@ -491,7 +529,7 @@ export default function Home() {
           </div>
 
           {/* Sidebar */}
-          <div style={{ backgroundColor: sidebarBg, padding: '28px 24px 48px', transition: 'background-color 0.4s' }}>
+          <div style={{ backgroundColor: sidebarBg, padding: isMobile ? '20px 16px 32px' : '28px 24px 48px', borderTop: isMobile ? `1px solid ${line}` : 'none', transition: 'background-color 0.4s' }}>
             {mounted && <>
               <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '22px', color: textPrimary, lineHeight: 1.3, marginBottom: '4px' }}>
                 {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
