@@ -26,6 +26,15 @@ interface StreakData {
   yesterdayWins: { text: string; category: string }[]
 }
 
+interface RecurringTask {
+  id: string
+  title: string
+  frequency: 'daily' | 'weekly'
+  days_of_week: number[]
+  priority: number
+  created_at: string
+}
+
 function getDateForDay(dayIndex: number): string {
   const today = new Date()
   const diff = dayIndex - today.getDay()
@@ -72,6 +81,11 @@ const CATEGORY_STYLES: Record<string, { bg: string; color: string; darkBg: strin
   Learning: { bg: '#fef9c3', color: '#a16207', darkBg: 'rgba(161,98,7,0.15)' },
   Other:    { bg: '#f3f4f6', color: '#6b7280', darkBg: 'rgba(107,114,128,0.15)' },
 }
+const DEFAULT_CATEGORIES = Object.keys(CATEGORY_STYLES)
+
+function getCategoryStyle(cat: string) {
+  return CATEGORY_STYLES[cat] || { bg: '#e8e4dc', color: '#6b6050', darkBg: 'rgba(107,96,80,0.15)' }
+}
 
 const PERIOD_LABELS: Record<RecapPeriod, string> = {
   today: 'Today',
@@ -88,13 +102,51 @@ function periodFrom(period: RecapPeriod): string | null {
   return null
 }
 
-function CategoryBadge({ category, dark }: { category: string | null; dark: boolean }) {
+function CategoryBadge({ category, dark, onClick }: { category: string | null; dark: boolean; onClick?: () => void }) {
   if (!category) return null
-  const s = CATEGORY_STYLES[category] || CATEGORY_STYLES.Other
+  const s = getCategoryStyle(category)
   return (
-    <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, padding: '2px 7px', borderRadius: '99px', backgroundColor: dark ? s.darkBg : s.bg, color: s.color, flexShrink: 0 }}>
+    <span onClick={onClick} style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, padding: '2px 7px', borderRadius: '99px', backgroundColor: dark ? s.darkBg : s.bg, color: s.color, flexShrink: 0, cursor: onClick ? 'pointer' : 'default', transition: 'opacity 0.2s' }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.opacity = '0.7' }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.opacity = '1' }}>
       {category}
     </span>
+  )
+}
+
+function CategoryPicker({ current, dark, onSelect, onClose }: { current: string; dark: boolean; onSelect: (cat: string) => void; onClose: () => void }) {
+  const [custom, setCustom] = useState('')
+  const allCats = [...DEFAULT_CATEGORIES]
+  // Add current if custom
+  if (current && !allCats.includes(current)) allCats.unshift(current)
+
+  return (
+    <div style={{ position: 'absolute', zIndex: 50, top: '100%', left: 0, marginTop: '4px', backgroundColor: dark ? '#23201b' : '#faf6ed', border: `1.5px solid ${dark ? '#2e2a23' : '#e2d5be'}`, borderRadius: '6px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: '8px', minWidth: '160px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        {allCats.map(cat => {
+          const s = getCategoryStyle(cat)
+          return (
+            <button key={cat} onClick={() => { onSelect(cat); onClose() }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: cat === current ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent', border: 'none', borderRadius: '4px', cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')}
+              onMouseLeave={e => (e.currentTarget.style.background = cat === current ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent')}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: s.color, opacity: 0.7, flexShrink: 0 }} />
+              <span style={{ fontSize: '11px', fontWeight: 600, color: dark ? '#ccc' : '#3d3226' }}>{cat}</span>
+              {cat === current && <span style={{ fontSize: '10px', color: dark ? '#6b6050' : '#b09878', marginLeft: 'auto' }}>current</span>}
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ borderTop: `1px solid ${dark ? '#2e2a23' : '#e2d5be'}`, marginTop: '6px', paddingTop: '6px' }}>
+        <form onSubmit={e => { e.preventDefault(); if (custom.trim()) { onSelect(custom.trim()); onClose() } }} style={{ display: 'flex', gap: '4px' }}>
+          <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="custom..."
+            style={{ flex: 1, fontSize: '11px', padding: '4px 6px', background: 'transparent', border: `1px solid ${dark ? '#2e2a23' : '#e2d5be'}`, borderRadius: '3px', color: dark ? '#ccc' : '#3d3226', outline: 'none' }} />
+          <button type="submit" disabled={!custom.trim()} style={{ fontSize: '10px', fontWeight: 700, padding: '4px 8px', backgroundColor: custom.trim() ? '#c9a55a' : 'transparent', color: custom.trim() ? '#fff' : (dark ? '#6b6050' : '#b09878'), border: 'none', borderRadius: '3px', cursor: custom.trim() ? 'pointer' : 'default' }}>
+            Add
+          </button>
+        </form>
+      </div>
+    </div>
   )
 }
 
@@ -155,6 +207,12 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false)
   const [streak, setStreak] = useState<StreakData | null>(null)
   const [showBriefing, setShowBriefing] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<string | null>(null)
+  const [recurring, setRecurring] = useState<RecurringTask[]>([])
+  const [showRecurringForm, setShowRecurringForm] = useState(false)
+  const [recurringInput, setRecurringInput] = useState('')
+  const [recurringFreq, setRecurringFreq] = useState<'daily' | 'weekly'>('daily')
+  const [recurringDays, setRecurringDays] = useState<number[]>([])
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -248,6 +306,14 @@ export default function Home() {
       .catch(() => {})
   }, [session, authFetch])
 
+  // Fetch recurring tasks and auto-spawn on load
+  useEffect(() => {
+    if (!session) return
+    fetchRecurring()
+    spawnRecurring()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
+
   function dismissBriefing() {
     const todayKey = new Date().toISOString().split('T')[0]
     localStorage.setItem('tally-briefing-date', todayKey)
@@ -307,6 +373,50 @@ export default function Home() {
     setWins(prev => prev.filter(w => w.id !== id))
     setWinsTotal(t => t - 1)
     await authFetch('/api/tasks', { method: 'DELETE', body: JSON.stringify({ id }) })
+  }
+
+  async function updateCategory(id: string, category: string) {
+    setWins(prev => prev.map(w => w.id === id ? { ...w, category } : w))
+    setEditingCategory(null)
+    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id, category }) })
+  }
+
+  const fetchRecurring = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/recurring')
+      const data = await res.json()
+      if (Array.isArray(data)) setRecurring(data)
+    } catch { /* table may not exist yet */ }
+  }, [authFetch])
+
+  async function addRecurring(e: React.FormEvent) {
+    e.preventDefault()
+    if (!recurringInput.trim()) return
+    await authFetch('/api/recurring', {
+      method: 'POST',
+      body: JSON.stringify({ title: recurringInput.trim(), frequency: recurringFreq, days_of_week: recurringFreq === 'weekly' ? recurringDays : [] }),
+    })
+    setRecurringInput('')
+    setRecurringDays([])
+    setShowRecurringForm(false)
+    await fetchRecurring()
+  }
+
+  async function deleteRecurring(id: string) {
+    setRecurring(prev => prev.filter(r => r.id !== id))
+    await authFetch('/api/recurring', { method: 'DELETE', body: JSON.stringify({ id }) })
+  }
+
+  async function spawnRecurring() {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const spawnKey = `tally-spawn-${today}`
+      if (localStorage.getItem(spawnKey)) return
+      const res = await authFetch('/api/recurring', { method: 'PATCH', body: JSON.stringify({ date: today }) })
+      const { spawned } = await res.json()
+      if (spawned > 0) await fetchPending(getDateForDay(new Date().getDay()))
+      localStorage.setItem(spawnKey, '1')
+    } catch { /* table may not exist yet */ }
   }
 
   async function generateRecap() {
@@ -394,7 +504,7 @@ export default function Home() {
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
             <h2 style={{ fontFamily: 'var(--font-caveat)', fontSize: '32px', color: textPrimary, margin: '0 0 20px', lineHeight: 1.2 }}>
-              good morning
+              {(() => { const h = new Date().getHours(); return h < 12 ? 'good morning' : h < 17 ? 'good afternoon' : 'good evening' })()}
             </h2>
 
             {/* Streak */}
@@ -632,7 +742,14 @@ export default function Home() {
                                 <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '21px', color: textPrimary, lineHeight: 1.3, margin: 0 }}>
                                   {task.win_statement || task.title}
                                 </p>
-                                <CategoryBadge category={task.category} dark={dark} />
+                                <div style={{ position: 'relative' }}>
+                                  <CategoryBadge category={task.category} dark={dark} onClick={() => setEditingCategory(editingCategory === task.id ? null : task.id)} />
+                                  {editingCategory === task.id && (
+                                    <CategoryPicker current={task.category || 'Other'} dark={dark}
+                                      onSelect={cat => updateCategory(task.id, cat)}
+                                      onClose={() => setEditingCategory(null)} />
+                                  )}
+                                </div>
                               </div>
                               {task.win_statement && (
                                 <p style={{ fontSize: '11px', color: textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '220px' : '100%' }}>from: {task.title}</p>
@@ -706,7 +823,7 @@ export default function Home() {
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '10px' }}>By Category</div>
                 {Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).map(([cat, count]) => {
-                  const s = CATEGORY_STYLES[cat] || CATEGORY_STYLES.Other
+                  const s = getCategoryStyle(cat)
                   const pct = Math.round((count / wins.length) * 100)
                   return (
                     <div key={cat} style={{ marginBottom: '10px' }}>
@@ -739,6 +856,64 @@ export default function Home() {
                   </div>
                 )
               })}
+            </div>
+
+            {/* Recurring tasks */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold }}>Repeating</div>
+                <button onClick={() => setShowRecurringForm(f => !f)} className="btn-press" style={{ fontSize: '10px', fontWeight: 700, color: gold, background: 'none', border: `1px solid ${line}`, borderRadius: '3px', padding: '3px 8px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = gold)}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = line)}>
+                  {showRecurringForm ? 'cancel' : '+ new'}
+                </button>
+              </div>
+
+              {showRecurringForm && (
+                <form onSubmit={addRecurring} style={{ marginBottom: '12px', padding: '10px', backgroundColor: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '6px', border: `1px solid ${line}` }}>
+                  <input value={recurringInput} onChange={e => setRecurringInput(e.target.value)} placeholder="task name..."
+                    style={{ width: '100%', fontSize: '13px', fontFamily: 'var(--font-caveat)', padding: '4px 0', background: 'transparent', border: 'none', borderBottom: `1.5px solid ${gold}`, color: textPrimary, outline: 'none', marginBottom: '8px' }} />
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                    {(['daily', 'weekly'] as const).map(f => (
+                      <button key={f} type="button" onClick={() => setRecurringFreq(f)}
+                        style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: '99px', border: `1.5px solid ${recurringFreq === f ? gold : line}`, background: recurringFreq === f ? gold : 'transparent', color: recurringFreq === f ? (dark ? '#1a1714' : '#faf6ed') : textMuted, cursor: 'pointer', transition: 'all 0.15s' }}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                  {recurringFreq === 'weekly' && (
+                    <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
+                      {DAYS.map((d, i) => (
+                        <button key={i} type="button" onClick={() => setRecurringDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])}
+                          style={{ width: '24px', height: '24px', borderRadius: '50%', fontSize: '9px', fontWeight: 700, border: `1.5px solid ${recurringDays.includes(i) ? coral : line}`, background: recurringDays.includes(i) ? coral : 'transparent', color: recurringDays.includes(i) ? '#fff' : textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button type="submit" disabled={!recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0)} className="btn-press"
+                    style={{ width: '100%', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: !recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0) ? 0.3 : 1, transition: 'opacity 0.2s' }}>
+                    Save
+                  </button>
+                </form>
+              )}
+
+              {recurring.length === 0 && !showRecurringForm ? (
+                <p style={{ fontSize: '11px', color: textMuted, fontStyle: 'italic' }}>no repeating tasks yet</p>
+              ) : recurring.map(r => (
+                <div key={r.id} className="group" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 0', borderBottom: `1px solid ${line}` }}>
+                  <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0 }}><circle cx="3" cy="3" r="3" fill={gold} opacity="0.5" /></svg>
+                  <span style={{ flex: 1, fontSize: '12px', color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                  <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: textMuted, flexShrink: 0 }}>
+                    {r.frequency === 'daily' ? 'daily' : (r.days_of_week ?? []).map(d => DAYS[d]).join(' ')}
+                  </span>
+                  <button onClick={() => deleteRecurring(r.id)} className="opacity-0 group-hover:opacity-100" style={{ color: dark ? '#5a4f40' : '#d4a8a0', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', transition: 'opacity 0.2s, color 0.2s', flexShrink: 0 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = coral)}
+                    onMouseLeave={e => (e.currentTarget.style.color = dark ? '#5a4f40' : '#d4a8a0')}>
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </button>
+                </div>
+              ))}
             </div>
 
             <div style={{ marginTop: '32px' }}>
