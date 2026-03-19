@@ -237,15 +237,26 @@ export default function Home() {
 
   async function completeTask(task: Task) {
     setEnhancing(task.id)
-    const res = await authFetch('/api/enhance-win', { method: 'POST', body: JSON.stringify({ title: task.title }) })
-    const { statement, category } = await res.json()
-    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, completed: true, win_statement: statement, category }) })
-    setEnhancing(null)
-    setCompleting(task.id)
-    await new Promise(r => setTimeout(r, 600))
-    await fetchPending(selectedDate)
-    await fetchWins(1)
-    setCompleting(null)
+    try {
+      let statement = task.title
+      let category = 'Other'
+      try {
+        const res = await authFetch('/api/enhance-win', { method: 'POST', body: JSON.stringify({ title: task.title }) })
+        const data = await res.json()
+        statement = data.statement || task.title
+        category = data.category || 'Other'
+      } catch { /* fall back to raw title */ }
+      await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, completed: true, win_statement: statement, category }) })
+      setEnhancing(null)
+      setCompleting(task.id)
+      await new Promise(r => setTimeout(r, 600))
+      await fetchPending(selectedDate)
+      await fetchWins(1)
+      setCompleting(null)
+    } catch {
+      setEnhancing(null)
+      setCompleting(null)
+    }
   }
 
   async function cyclePriority(task: Task) {
@@ -268,20 +279,24 @@ export default function Home() {
   async function generateRecap() {
     setRecapLoading(true)
     setRecap('')
-    const from = periodFrom(recapPeriod)
-    let url = `/api/tasks?status=completed&limit=500`
-    if (from) url += `&from=${encodeURIComponent(from)}`
-    const { data } = await (await authFetch(url)).json()
+    try {
+      const from = periodFrom(recapPeriod)
+      let url = `/api/tasks?status=completed&limit=500`
+      if (from) url += `&from=${encodeURIComponent(from)}`
+      const { data } = await (await authFetch(url)).json()
 
-    if (!data || data.length === 0) {
-      setRecap(`No wins found for ${PERIOD_LABELS[recapPeriod].toLowerCase()}.`)
-      setRecapLoading(false)
-      return
+      if (!data || data.length === 0) {
+        setRecap(`No wins found for ${PERIOD_LABELS[recapPeriod].toLowerCase()}.`)
+        setRecapLoading(false)
+        return
+      }
+
+      const winsPayload = data.map((t: Task) => ({ statement: t.win_statement || t.title, category: t.category || 'Other' }))
+      const res = await authFetch('/api/recap', { method: 'POST', body: JSON.stringify({ wins: winsPayload }) })
+      setRecap((await res.json()).recap)
+    } catch {
+      setRecap("Couldn't generate your recap right now — try again later.")
     }
-
-    const winsPayload = data.map((t: Task) => ({ statement: t.win_statement || t.title, category: t.category || 'Other' }))
-    const res = await authFetch('/api/recap', { method: 'POST', body: JSON.stringify({ wins: winsPayload }) })
-    setRecap((await res.json()).recap)
     setRecapLoading(false)
   }
 
