@@ -1,5 +1,11 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { createClient, Session } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 interface Task {
   id: string
@@ -130,6 +136,9 @@ export default function Home() {
   const [recapLoading, setRecapLoading] = useState(false)
   const [recapPeriod, setRecapPeriod] = useState<RecapPeriod>('today')
 
+  const [session, setSession] = useState<Session | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
   const [activeTab, setActiveTab] = useState<'tasks' | 'wins'>('tasks')
   const [weather, setWeather] = useState<string | null>(null)
   const [dark, setDark] = useState(false)
@@ -145,20 +154,42 @@ export default function Home() {
 
   const fetchPending = useCallback(async (date?: string) => {
     const d = date ?? getDateForDay(new Date().getDay())
-    const res = await fetch(`/api/tasks?status=pending&date=${d}`)
+    const res = await authFetch(`/api/tasks?status=pending&date=${d}`)
     setPending(await res.json())
-  }, [])
+  }, [authFetch])
 
   const fetchWins = useCallback(async (page = 1, append = false) => {
     setWinsLoading(true)
-    const res = await fetch(`/api/tasks?status=completed&page=${page}&limit=${WINS_PER_PAGE}`)
+    const res = await authFetch(`/api/tasks?status=completed&page=${page}&limit=${WINS_PER_PAGE}`)
     const { data, total, hasMore } = await res.json()
     setWins(prev => append ? [...prev, ...data] : data)
     setWinsTotal(total)
     setWinsPage(page)
     setWinsHasMore(hasMore)
     setWinsLoading(false)
+  }, [authFetch])
+
+  // Auth
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    return () => subscription.unsubscribe()
   }, [])
+
+  const authFetch = useCallback((url: string, opts: RequestInit = {}) => {
+    const token = session?.access_token
+    return fetch(url, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(opts.headers as Record<string, string> ?? {}),
+      },
+    })
+  }, [session])
 
   // Initialize after mount to avoid SSR/client date mismatch
   useEffect(() => {
@@ -189,7 +220,7 @@ export default function Home() {
     setLoading(true)
     const body: Record<string, string> = { title: input.trim() }
     if (!isViewingToday) body.due_date = selectedDate
-    await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    await authFetch('/api/tasks', { method: 'POST', body: JSON.stringify(body) })
     setInput('')
     await fetchPending(selectedDate)
     setLoading(false)
@@ -197,9 +228,9 @@ export default function Home() {
 
   async function completeTask(task: Task) {
     setEnhancing(task.id)
-    const res = await fetch('/api/enhance-win', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: task.title }) })
+    const res = await authFetch('/api/enhance-win', { method: 'POST', body: JSON.stringify({ title: task.title }) })
     const { statement, category } = await res.json()
-    await fetch('/api/tasks', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: task.id, completed: true, win_statement: statement, category }) })
+    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, completed: true, win_statement: statement, category }) })
     setEnhancing(null)
     setCompleting(task.id)
     await new Promise(r => setTimeout(r, 600))
@@ -211,18 +242,18 @@ export default function Home() {
   async function cyclePriority(task: Task) {
     const next = ((task.priority ?? 2) % 3) + 1
     setPending(prev => prev.map(t => t.id === task.id ? { ...t, priority: next } : t))
-    await fetch('/api/tasks', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: task.id, priority: next }) })
+    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, priority: next }) })
   }
 
   async function deleteTask(id: string) {
-    await fetch('/api/tasks', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await authFetch('/api/tasks', { method: 'DELETE', body: JSON.stringify({ id }) })
     await fetchPending(selectedDate)
   }
 
   async function deleteWin(id: string) {
     setWins(prev => prev.filter(w => w.id !== id))
     setWinsTotal(t => t - 1)
-    await fetch('/api/tasks', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await authFetch('/api/tasks', { method: 'DELETE', body: JSON.stringify({ id }) })
   }
 
   async function generateRecap() {
@@ -231,7 +262,7 @@ export default function Home() {
     const from = periodFrom(recapPeriod)
     let url = `/api/tasks?status=completed&limit=500`
     if (from) url += `&from=${encodeURIComponent(from)}`
-    const { data } = await (await fetch(url)).json()
+    const { data } = await (await authFetch(url)).json()
 
     if (!data || data.length === 0) {
       setRecap(`No wins found for ${PERIOD_LABELS[recapPeriod].toLowerCase()}.`)
@@ -240,7 +271,7 @@ export default function Home() {
     }
 
     const winsPayload = data.map((t: Task) => ({ statement: t.win_statement || t.title, category: t.category || 'Other' }))
-    const res = await fetch('/api/recap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wins: winsPayload }) })
+    const res = await authFetch('/api/recap', { method: 'POST', body: JSON.stringify({ wins: winsPayload }) })
     setRecap((await res.json()).recap)
     setRecapLoading(false)
   }
@@ -273,6 +304,28 @@ export default function Home() {
   const coral      = dark ? '#d4694e' : '#c94f38'
   const sidebarBg  = dark ? '#1f1c17' : '#f2ead8'
 
+  if (authLoading) return (
+    <main style={{ minHeight: '100vh', backgroundColor: '#f7f1e3', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+  )
+
+  if (!session) return (
+    <main style={{ minHeight: '100vh', backgroundColor: '#f7f1e3', backgroundImage: 'repeating-linear-gradient(transparent, transparent 39px, #e2d5be 39px, #e2d5be 40px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ backgroundColor: '#faf6ed', boxShadow: '0 0 40px rgba(0,0,0,0.15)', borderRadius: '4px', padding: '48px 56px', textAlign: 'center', maxWidth: '380px', width: '100%' }}>
+        <h1 style={{ fontSize: '48px', color: '#c94f38', fontFamily: 'Georgia, serif', fontWeight: 900, margin: '0 0 8px' }}>TALLY</h1>
+        <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '19px', color: '#b09878', marginBottom: '36px' }}>track tasks. own your wins.</p>
+        <button
+          onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%', padding: '12px 24px', backgroundColor: '#fff', border: '1.5px solid #e2d5be', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#3d3226', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s' }}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.15)')}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)')}
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Continue with Google
+        </button>
+      </div>
+    </main>
+  )
+
   return (
     <main style={{ minHeight: '100vh', backgroundColor: bg, backgroundImage: `repeating-linear-gradient(transparent, transparent 39px, ${line} 39px, ${line} 40px)`, transition: 'background-color 0.4s' }}>
       <div className="mx-auto min-h-screen" style={{ maxWidth: '960px', backgroundColor: paper, boxShadow: '0 0 40px rgba(0,0,0,0.15)', transition: 'background-color 0.4s', position: 'relative', display: 'flex', flexDirection: 'column' }}>
@@ -298,6 +351,9 @@ export default function Home() {
               </div>
               <button onClick={() => setDark(d => !d)} style={{ fontSize: '16px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, transition: 'opacity 0.2s' }} onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}>
                 {dark ? '☀️' : '🌙'}
+              </button>
+              <button onClick={() => supabase.auth.signOut()} style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
+                Sign out
               </button>
             </div>
           </div>

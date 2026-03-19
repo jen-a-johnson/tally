@@ -3,21 +3,26 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-function getSupabase() {
+function getSupabase(token: string) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-    process.env.SUPABASE_SERVICE_KEY ?? ''
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
   )
 }
 
+function getToken(req: Request) {
+  return req.headers.get('authorization')?.replace('Bearer ', '') ?? ''
+}
+
 export async function GET(req: Request) {
+  const sb = getSupabase(getToken(req))
   const url = new URL(req.url)
   const status = url.searchParams.get('status')
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
-  const limit = Math.min(100, parseInt(url.searchParams.get('limit') || '25'))
+  const limit = Math.min(500, parseInt(url.searchParams.get('limit') || '25'))
   const from = url.searchParams.get('from')
   const to = url.searchParams.get('to')
-  const sb = getSupabase()
 
   // Pending tasks — filtered by date (today = tasks with that date OR no date)
   if (status !== 'completed') {
@@ -64,8 +69,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const sb = getSupabase(getToken(req))
   const { title, due_date } = await req.json()
-  const { data, error } = await getSupabase()
+  const { data, error } = await sb
     .from('tasks')
     .insert([{ title, completed: false, ...(due_date ? { due_date } : {}) }])
     .select()
@@ -75,6 +81,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const sb = getSupabase(getToken(req))
   const { id, completed, win_statement, category, priority } = await req.json()
   const update: Record<string, unknown> = {}
   if (completed !== undefined) update.completed = completed
@@ -85,7 +92,7 @@ export async function PATCH(req: Request) {
   if (category)  update.category = category
   if (priority !== undefined) update.priority = priority
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await sb
     .from('tasks')
     .update(update)
     .eq('id', id)
@@ -96,8 +103,9 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const sb = getSupabase(getToken(req))
   const { id } = await req.json()
-  const { error } = await getSupabase().from('tasks').delete().eq('id', id)
+  const { error } = await sb.from('tasks').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
