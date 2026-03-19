@@ -10,17 +10,28 @@ export async function POST(req: Request) {
 
   const message = await anthropic.messages.create({
     model: 'claude-opus-4-5',
-    max_tokens: 150,
+    max_tokens: 200,
     messages: [{
       role: 'user',
-      content: `You are helping a professional reframe a completed task as a polished achievement statement.
+      content: `Given this completed task, do two things:
+1. Rewrite it as a short, simple win. Keep it casual and human — like you're telling a friend what you got done. No corporate language, no buzzwords. Under 15 words.
+2. Pick the best category from this exact list: Work, Personal, Home, Health, Learning, Other
 
 Task: "${title}"
 
-Rewrite it as a single, confident, professional achievement statement — the kind you'd put in a performance review or LinkedIn update. Be specific and outcome-oriented. Keep it under 20 words. No bullet points, no quotes, just the statement.`
+Respond with valid JSON only, no explanation:
+{"statement": "...", "category": "..."}`
     }]
   })
 
-  const statement = message.content[0].type === 'text' ? message.content[0].text.trim() : title
-  return NextResponse.json({ statement })
+  const text = message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+  try {
+    const parsed = JSON.parse(text)
+    return NextResponse.json({
+      statement: parsed.statement || title,
+      category: parsed.category || 'Other',
+    })
+  } catch {
+    return NextResponse.json({ statement: title, category: 'Other' })
+  }
 }

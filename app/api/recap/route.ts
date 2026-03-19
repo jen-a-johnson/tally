@@ -12,19 +12,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ recap: 'No wins yet — complete some tasks to generate your recap.' })
   }
 
-  const winList = wins.map((w: string, i: number) => `${i + 1}. ${w}`).join('\n')
+  // Group wins by category
+  const grouped: Record<string, string[]> = {}
+  for (const w of wins) {
+    const cat = w.category || 'Other'
+    if (!grouped[cat]) grouped[cat] = []
+    grouped[cat].push(w.statement || w.title)
+  }
+
+  const sections = Object.entries(grouped)
+    .map(([cat, items]) => `${cat}:\n${items.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}`)
+    .join('\n\n')
 
   const message = await anthropic.messages.create({
     model: 'claude-opus-4-5',
-    max_tokens: 400,
+    max_tokens: 600,
     messages: [{
       role: 'user',
-      content: `You are helping a professional summarize their recent accomplishments.
+      content: `You are helping someone summarize their recent accomplishments for a performance review or status update.
 
-Here are their completed wins:
-${winList}
+Here are their wins, grouped by category:
+${sections}
 
-Write a short, confident performance summary (3–5 sentences) that ties these wins together into a cohesive narrative. Suitable for a performance review, a standup, or a LinkedIn post. Warm but professional tone.`
+Write a confident, polished performance summary. Use the category names as section headers (bold with **Category**). For each category with wins, write 2–3 sentences tying those wins into a narrative. Professional and warm tone — suitable for a performance review or LinkedIn.`
     }]
   })
 
