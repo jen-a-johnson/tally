@@ -691,7 +691,7 @@ export default function Home() {
       <div className="mx-auto min-h-screen" style={{ maxWidth: '960px', backgroundColor: paper, boxShadow: '0 0 40px rgba(0,0,0,0.15)', transition: 'background-color 0.4s', position: 'relative', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
-        <div style={{ backgroundColor: dark ? '#1f1c17' : '#f7f1e3', borderBottom: `3px solid ${gold}`, padding: isMobile ? '12px 16px 10px' : '20px 32px 16px', transition: 'background-color 0.4s', position: 'relative', zIndex: 1 }}>
+        <div style={{ backgroundColor: dark ? '#1f1c17' : '#f7f1e3', borderBottom: `3px solid ${gold}`, padding: isMobile ? '12px 16px 10px' : '20px 32px 16px', transition: 'background-color 0.4s', position: 'relative', zIndex: 2 }}>
           {isMobile ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
