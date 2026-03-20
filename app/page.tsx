@@ -35,12 +35,19 @@ interface RecurringTask {
   created_at: string
 }
 
+function localDateStr(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function getDateForDay(dayIndex: number): string {
   const today = new Date()
   const diff = dayIndex - today.getDay()
   const d = new Date(today)
   d.setDate(d.getDate() + diff)
-  return d.toISOString().split('T')[0]
+  return localDateStr(d)
 }
 
 type RecapPeriod = 'today' | 'week' | 'month' | 'all'
@@ -346,7 +353,7 @@ export default function Home() {
     if (!session) return
     fetchWins(1)
     fetch('https://wttr.in/?format=%C,+%t&u', { signal: AbortSignal.timeout(4000) })
-      .then(r => r.text()).then(t => setWeather(t.trim())).catch(() => {})
+      .then(r => r.text()).then(t => { const w = t.trim(); if (!w.includes('Unknown') && !w.includes('please try') && w.length < 60) setWeather(w) }).catch(() => {})
   }, [fetchWins, session])
 
   useEffect(() => {
@@ -361,7 +368,7 @@ export default function Home() {
       .then(r => r.json())
       .then((data: StreakData) => {
         setStreak(data)
-        const todayKey = new Date().toISOString().split('T')[0]
+        const todayKey = localDateStr()
         const lastSeen = localStorage.getItem('tally-briefing-date')
         if (lastSeen !== todayKey) {
           setShowBriefing(true)
@@ -379,7 +386,7 @@ export default function Home() {
   }, [session])
 
   function dismissBriefing() {
-    const todayKey = new Date().toISOString().split('T')[0]
+    const todayKey = localDateStr()
     localStorage.setItem('tally-briefing-date', todayKey)
     setShowBriefing(false)
   }
@@ -501,7 +508,7 @@ export default function Home() {
 
   async function spawnRecurring(date?: string) {
     try {
-      const targetDate = date || new Date().toISOString().split('T')[0]
+      const targetDate = date || localDateStr()
       const spawnKey = `tally-spawn-${targetDate}`
       if (localStorage.getItem(spawnKey)) return
       const res = await authFetch('/api/recurring', { method: 'PATCH', body: JSON.stringify({ date: targetDate }) })
