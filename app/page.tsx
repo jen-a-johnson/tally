@@ -286,8 +286,12 @@ export default function Home() {
   const [recurringSaving, setRecurringSaving] = useState(false)
   const [timeTracking, setTimeTracking] = useState(false)
   const [timePrompt, setTimePrompt] = useState<{ taskId: string; task: Task } | null>(null)
-  const [timeInput, setTimeInput] = useState('')
+  const [timeHours, setTimeHours] = useState('')
+  const [timeMinutes, setTimeMinutes] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [editingTime, setEditingTime] = useState<string | null>(null)
+  const [editTimeHours, setEditTimeHours] = useState('')
+  const [editTimeMinutes, setEditTimeMinutes] = useState('')
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -416,7 +420,8 @@ export default function Home() {
   function completeTask(task: Task) {
     if (timeTracking) {
       setTimePrompt({ taskId: task.id, task })
-      setTimeInput('')
+      setTimeHours('')
+      setTimeMinutes('')
       return
     }
     doCompleteTask(task)
@@ -472,6 +477,12 @@ export default function Home() {
     const next = !timeTracking
     setTimeTracking(next)
     await authFetch('/api/settings', { method: 'PATCH', body: JSON.stringify({ time_tracking_enabled: next }) })
+  }
+
+  async function updateTime(id: string, minutes: number | null) {
+    setWins(prev => prev.map(w => w.id === id ? { ...w, time_minutes: minutes } : w))
+    setEditingTime(null)
+    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id, time_minutes: minutes }) })
   }
 
   async function updateCategory(id: string, category: string) {
@@ -888,7 +899,7 @@ export default function Home() {
                           ) : null })()}
                         </div>
                         {dayWins.map(task => (
-                          <div key={task.id} className="group win-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: `1px solid ${line}`, padding: '11px 0', position: 'relative', zIndex: editingCategory === task.id ? 10 : 0 }}>
+                          <div key={task.id} className="group win-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: `1px solid ${line}`, padding: '11px 0', position: 'relative', zIndex: editingCategory === task.id || editingTime === task.id ? 10 : 0 }}>
                             <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0, marginTop: '10px' }}><circle cx="3" cy="3" r="3" fill={coral} opacity="0.6" /></svg>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '2px' }}>
@@ -903,7 +914,47 @@ export default function Home() {
                                       onClose={() => setEditingCategory(null)} />
                                   )}
                                 </div>
-                                {task.time_minutes != null && task.time_minutes > 0 && (
+                                {timeTracking && (
+                                  <div style={{ position: 'relative' }}>
+                                    {editingTime === task.id ? (
+                                      <>
+                                      <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setEditingTime(null)} />
+                                      <form
+                                        style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '8px 10px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                        onSubmit={e => {
+                                          e.preventDefault()
+                                          const h = parseInt(editTimeHours) || 0
+                                          const m = parseInt(editTimeMinutes) || 0
+                                          const total = h * 60 + m
+                                          updateTime(task.id, total > 0 ? total : null)
+                                        }}>
+                                        <input autoFocus type="number" min="0" value={editTimeHours} onChange={e => setEditTimeHours(e.target.value)} placeholder="0" style={{ width: '36px', fontSize: '13px', fontWeight: 700, textAlign: 'center', color: textPrimary, background: 'transparent', border: 'none', borderBottom: `1.5px solid ${gold}`, outline: 'none', padding: '2px 0' }} />
+                                        <span style={{ fontSize: '11px', color: textMuted }}>h</span>
+                                        <input type="number" min="0" max="59" value={editTimeMinutes} onChange={e => setEditTimeMinutes(e.target.value)} placeholder="0" style={{ width: '36px', fontSize: '13px', fontWeight: 700, textAlign: 'center', color: textPrimary, background: 'transparent', border: 'none', borderBottom: `1.5px solid ${gold}`, outline: 'none', padding: '2px 0' }} />
+                                        <span style={{ fontSize: '11px', color: textMuted }}>m</span>
+                                        <button type="submit" className="btn-press" style={{ fontSize: '10px', fontWeight: 700, color: '#fff', backgroundColor: coral, border: 'none', borderRadius: '3px', padding: '3px 8px', cursor: 'pointer', marginLeft: '2px' }}>Save</button>
+                                      </form>
+                                      </>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setEditingTime(task.id)
+                                          const mins = task.time_minutes || 0
+                                          setEditTimeHours(mins >= 60 ? String(Math.floor(mins / 60)) : '')
+                                          setEditTimeMinutes(mins % 60 > 0 ? String(mins % 60) : '')
+                                        }}
+                                        style={{ fontSize: '10px', fontWeight: 600, color: textMuted, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: '3px', transition: 'background-color 0.15s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
+                                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                        {task.time_minutes != null && task.time_minutes > 0
+                                          ? (task.time_minutes >= 60 ? `${Math.floor(task.time_minutes / 60)}h ${task.time_minutes % 60 > 0 ? `${task.time_minutes % 60}m` : ''}` : `${task.time_minutes}m`)
+                                          : '+ time'}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                {!timeTracking && task.time_minutes != null && task.time_minutes > 0 && (
                                   <span style={{ fontSize: '10px', fontWeight: 600, color: textMuted, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                                     <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                                     {task.time_minutes >= 60 ? `${Math.floor(task.time_minutes / 60)}h ${task.time_minutes % 60 > 0 ? `${task.time_minutes % 60}m` : ''}` : `${task.time_minutes}m`}
@@ -1100,20 +1151,32 @@ export default function Home() {
             <p style={{ fontSize: '14px', color: textPrimary, marginBottom: '16px', lineHeight: 1.4 }}>{timePrompt.task.title}</p>
             <form onSubmit={e => {
               e.preventDefault()
-              const mins = parseInt(timeInput)
-              doCompleteTask(timePrompt.task, isNaN(mins) ? undefined : mins)
+              const h = parseInt(timeHours) || 0
+              const m = parseInt(timeMinutes) || 0
+              const total = h * 60 + m
+              doCompleteTask(timePrompt.task, total > 0 ? total : undefined)
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
                 <input
                   autoFocus
                   type="number"
                   min="0"
-                  value={timeInput}
-                  onChange={e => setTimeInput(e.target.value)}
+                  value={timeHours}
+                  onChange={e => setTimeHours(e.target.value)}
                   placeholder="0"
-                  style={{ width: '80px', fontSize: '24px', fontFamily: 'Georgia, serif', fontWeight: 700, textAlign: 'center', color: textPrimary, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, outline: 'none', padding: '4px 0' }}
+                  style={{ width: '56px', fontSize: '24px', fontFamily: 'Georgia, serif', fontWeight: 700, textAlign: 'center', color: textPrimary, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, outline: 'none', padding: '4px 0' }}
                 />
-                <span style={{ fontSize: '13px', color: textMuted }}>minutes</span>
+                <span style={{ fontSize: '13px', color: textMuted }}>h</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={timeMinutes}
+                  onChange={e => setTimeMinutes(e.target.value)}
+                  placeholder="0"
+                  style={{ width: '56px', fontSize: '24px', fontFamily: 'Georgia, serif', fontWeight: 700, textAlign: 'center', color: textPrimary, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, outline: 'none', padding: '4px 0' }}
+                />
+                <span style={{ fontSize: '13px', color: textMuted }}>m</span>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="button" onClick={() => doCompleteTask(timePrompt.task)} className="btn-press"
