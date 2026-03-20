@@ -920,7 +920,7 @@ export default function Home() {
                                       <>
                                       <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setEditingTime(null)} />
                                       <form
-                                        style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '8px 10px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                        style={{ position: 'absolute', ...(isMobile ? { right: 0 } : { left: 0 }), top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '8px 10px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
                                         onSubmit={e => {
                                           e.preventDefault()
                                           const h = parseInt(editTimeHours) || 0
