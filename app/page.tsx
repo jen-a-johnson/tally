@@ -813,8 +813,11 @@ export default function Home() {
                         ))}
                       </div>
 
-                      <button onClick={generateRecap} disabled={recapLoading} className={`btn-press ${recapLoading ? 'recap-loading' : ''}`} style={{ width: '100%', padding: '11px', border: `2px dashed ${gold}`, borderLeftWidth: '3px', borderLeftStyle: 'solid', color: gold, background: 'transparent', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.7 : 1, transition: 'opacity 0.2s, border-color 0.2s' }}>
-                        {recapLoading ? 'writing your recap...' : `Recap — ${PERIOD_LABELS[recapPeriod]}`}
+                      <button onClick={generateRecap} disabled={recapLoading} className={`btn-press ${recapLoading ? 'recap-loading' : ''}`} style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: gold, color: dark ? '#1a1714' : '#faf6ed', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.7 : 1, transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.15s', boxShadow: '0 2px 8px rgba(201,165,90,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                        onMouseEnter={e => { if (!recapLoading) e.currentTarget.style.boxShadow = '0 4px 16px rgba(201,165,90,0.45)' }}
+                        onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(201,165,90,0.3)')}>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                        {recapLoading ? 'writing your recap...' : `Generate Recap`}
                       </button>
 
                       {recap && (
