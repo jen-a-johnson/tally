@@ -82,9 +82,10 @@ export async function PATCH(req: Request) {
 
   const existingTitles = new Set((existing ?? []).map(t => t.title))
 
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
   const toSpawn = templates.filter(t => {
     if (existingTitles.has(t.title)) return false
-    if (t.frequency === 'daily') return true
+    if (t.frequency === 'daily') return isWeekday
     if (t.frequency === 'weekly') return (t.days_of_week ?? []).includes(dayOfWeek)
     return false
   })

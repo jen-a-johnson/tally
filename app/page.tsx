@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient, Session } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -176,6 +176,68 @@ function TornEdge({ fill, flip = false }: { fill: string; flip?: boolean }) {
 
 function SidebarScribbles() {
   return null
+}
+
+function SwipeableTaskRow({ children, onSwipeRight, onSwipeLeft, disabled }: { children: React.ReactNode; onSwipeRight: () => void; onSwipeLeft: () => void; disabled?: boolean }) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const startX = useRef(0)
+  const currentX = useRef(0)
+  const swiping = useRef(false)
+  const [offset, setOffset] = useState(0)
+  const threshold = 80
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (disabled) return
+    startX.current = e.touches[0].clientX
+    swiping.current = true
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!swiping.current || disabled) return
+    currentX.current = e.touches[0].clientX
+    const diff = currentX.current - startX.current
+    // Clamp between -120 and 120 with resistance
+    const clamped = Math.sign(diff) * Math.min(Math.abs(diff) * 0.6, 120)
+    setOffset(clamped)
+  }
+
+  function handleTouchEnd() {
+    if (!swiping.current || disabled) return
+    swiping.current = false
+    if (offset > threshold) {
+      setOffset(0)
+      onSwipeRight()
+    } else if (offset < -threshold) {
+      setOffset(0)
+      onSwipeLeft()
+    } else {
+      setOffset(0)
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden' }}>
+      {/* Background actions */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', paddingLeft: '16px', backgroundColor: '#6db08a', opacity: offset > 20 ? Math.min(offset / threshold, 1) : 0, transition: offset === 0 ? 'opacity 0.2s' : 'none' }}>
+          <svg width="16" height="14" viewBox="0 0 10 8" fill="none"><path d="M1 3.5L3.5 6.5L9 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginLeft: '8px' }}>Done</span>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '16px', backgroundColor: '#c94f38', opacity: offset < -20 ? Math.min(Math.abs(offset) / threshold, 1) : 0, transition: offset === 0 ? 'opacity 0.2s' : 'none' }}>
+          <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: '8px' }}>Delete</span>
+          <svg width="12" height="12" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+        </div>
+      </div>
+      {/* Swipeable content */}
+      <div ref={rowRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ transform: `translateX(${offset}px)`, transition: swiping.current ? 'none' : 'transform 0.25s ease-out', position: 'relative', zIndex: 1, backgroundColor: 'inherit', willChange: offset !== 0 ? 'transform' : 'auto' }}>
+        {children}
+      </div>
+    </div>
+  )
 }
 
 export default function Home() {
@@ -401,7 +463,8 @@ export default function Home() {
     })
     // Immediately spawn the task for today if it matches the schedule
     const todayDow = new Date().getDay()
-    const shouldSpawnToday = freq === 'daily' || (freq === 'weekly' && days.includes(todayDow))
+    const isWeekday = todayDow >= 1 && todayDow <= 5
+    const shouldSpawnToday = (freq === 'daily' && isWeekday) || (freq === 'weekly' && days.includes(todayDow))
     if (shouldSpawnToday) {
       const today = new Date().toISOString().split('T')[0]
       // Check if a task with this title already exists for today
@@ -503,7 +566,7 @@ export default function Home() {
     <main style={{ minHeight: '100vh', backgroundColor: '#f7f1e3', backgroundImage: 'repeating-linear-gradient(transparent, transparent 39px, #e2d5be 39px, #e2d5be 40px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ backgroundColor: '#faf6ed', boxShadow: '0 0 40px rgba(0,0,0,0.15)', borderRadius: '4px', padding: 'clamp(28px, 7vw, 48px) clamp(20px, 8vw, 56px)', textAlign: 'center', maxWidth: '380px', width: '100%', margin: '0 16px' }}>
         <h1 style={{ fontSize: '48px', color: '#c94f38', fontFamily: 'Georgia, serif', fontWeight: 900, margin: '0 0 8px' }}>TALLY</h1>
-        <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '19px', color: '#b09878', marginBottom: '36px' }}>track tasks. own your wins.</p>
+        <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '18px', color: '#b09878', marginBottom: '36px' }}>track tasks. own your wins.</p>
         <button
           onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%', padding: '12px 24px', backgroundColor: '#fff', border: '1.5px solid #e2d5be', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#3d3226', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s' }}
@@ -678,7 +741,7 @@ export default function Home() {
             {activeTab === 'tasks' && (
               <div>
                 <form onSubmit={addTask} style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-                  <input value={input} onChange={e => setInput(e.target.value)} placeholder={isViewingToday ? "what needs to get done today?" : `planning ahead for ${selectedDayName}...`} style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, padding: '6px 0', fontSize: isMobile ? '16px' : '19px', color: textPrimary, fontFamily: 'var(--font-caveat)', outline: 'none' }} />
+                  <input value={input} onChange={e => setInput(e.target.value)} placeholder={isViewingToday ? "what needs to get done today?" : `planning ahead for ${selectedDayName}...`} style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, padding: '8px 0', fontSize: isMobile ? '16px' : '15px', color: textPrimary, outline: 'none' }} />
                   <button type="submit" disabled={loading || !input.trim()} className="btn-press" style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 16px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: loading || !input.trim() ? 0.3 : 1, transition: 'opacity 0.2s, box-shadow 0.2s', boxShadow: '0 1px 4px rgba(201,79,56,0.2)' }}
                     onMouseEnter={e => { if (!loading && input.trim()) e.currentTarget.style.boxShadow = '0 3px 10px rgba(201,79,56,0.35)' }}
                     onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 4px rgba(201,79,56,0.2)')}>
@@ -694,27 +757,29 @@ export default function Home() {
                   const p = task.priority ?? 2
                   const pc = dark ? PRIORITY_CONFIG[p].darkColor : PRIORITY_CONFIG[p].color
                   return (
-                    <div key={task.id} className={`group ${completing !== task.id ? 'task-row' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s', animationDelay: `${i * 0.05}s` }}>
-                      <span style={{ fontSize: '11px', color: gold, width: '16px', flexShrink: 0, textAlign: 'right' }}>{i + 1}</span>
-                      <button onClick={() => cyclePriority(task)} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
-                        <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
-                      </button>
-                      <button onClick={() => completeTask(task)} disabled={!!enhancing} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${completing === task.id ? '#6db08a' : gold}`, background: completing === task.id ? '#6db08a' : 'transparent', cursor: enhancing ? 'default' : 'pointer', opacity: enhancing && enhancing !== task.id ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s' }}
-                        onMouseEnter={e => { if (!enhancing) e.currentTarget.style.borderColor = '#6db08a' }}
-                        onMouseLeave={e => { if (!enhancing && completing !== task.id) e.currentTarget.style.borderColor = gold }}>
-                        {completing === task.id && <span className="check-pop" style={{ color: '#fff', fontSize: '11px', lineHeight: 1 }}>
-                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 3.5L3.5 6.5L9 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </span>}
-                        {enhancing === task.id && <div className="animate-pulse rounded-full" style={{ width: '8px', height: '8px', backgroundColor: gold }} />}
-                      </button>
-                      <span style={{ flex: 1, fontFamily: 'var(--font-caveat)', fontSize: '21px', color: completing === task.id ? '#6db08a' : enhancing === task.id ? textMuted : textPrimary, fontStyle: enhancing === task.id ? 'italic' : 'normal', transition: 'color 0.3s' }}>
-                        {completing === task.id ? 'moving to wins' : enhancing === task.id ? 'logging this one...' : task.title}
-                      </span>
-                      {p === 1 && <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: pc, textTransform: 'uppercase', flexShrink: 0 }}>High</span>}
-                      <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 btn-press" style={{ color: dark ? '#5a4f40' : '#d4a8a0', fontSize: '18px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s, color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = dark ? '#5a4f40' : '#d4a8a0')}>
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                      </button>
-                    </div>
+                    <SwipeableTaskRow key={task.id} onSwipeRight={() => completeTask(task)} onSwipeLeft={() => deleteTask(task.id)} disabled={!!enhancing || !!completing}>
+                      <div className={`group ${completing !== task.id ? 'task-row' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s', animationDelay: `${i * 0.05}s`, backgroundColor: paper }}>
+                        <span style={{ fontSize: '11px', color: gold, width: '16px', flexShrink: 0, textAlign: 'right' }}>{i + 1}</span>
+                        <button onClick={() => cyclePriority(task)} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
+                          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
+                        </button>
+                        <button onClick={() => completeTask(task)} disabled={!!enhancing} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${completing === task.id ? '#6db08a' : gold}`, background: completing === task.id ? '#6db08a' : 'transparent', cursor: enhancing ? 'default' : 'pointer', opacity: enhancing && enhancing !== task.id ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s' }}
+                          onMouseEnter={e => { if (!enhancing) e.currentTarget.style.borderColor = '#6db08a' }}
+                          onMouseLeave={e => { if (!enhancing && completing !== task.id) e.currentTarget.style.borderColor = gold }}>
+                          {completing === task.id && <span className="check-pop" style={{ color: '#fff', fontSize: '11px', lineHeight: 1 }}>
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 3.5L3.5 6.5L9 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </span>}
+                          {enhancing === task.id && <div className="animate-pulse rounded-full" style={{ width: '8px', height: '8px', backgroundColor: gold }} />}
+                        </button>
+                        <span style={{ flex: 1, fontSize: '15px', color: completing === task.id ? '#6db08a' : enhancing === task.id ? textMuted : textPrimary, fontStyle: enhancing === task.id ? 'italic' : 'normal', transition: 'color 0.3s', lineHeight: 1.4 }}>
+                          {completing === task.id ? 'moving to wins' : enhancing === task.id ? 'logging this one...' : task.title}
+                        </span>
+                        {p === 1 && <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: pc, textTransform: 'uppercase', flexShrink: 0 }}>High</span>}
+                        <button onClick={() => deleteTask(task.id)} className={`${isMobile ? '' : 'opacity-0 group-hover:opacity-100'} btn-press`} style={{ color: dark ? '#5a4f40' : '#d4a8a0', fontSize: '18px', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s, color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = coral)} onMouseLeave={e => (e.currentTarget.style.color = dark ? '#5a4f40' : '#d4a8a0')}>
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                        </button>
+                      </div>
+                    </SwipeableTaskRow>
                   )
                 })}
               </div>
@@ -763,7 +828,7 @@ export default function Home() {
                             <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0, marginTop: '10px' }}><circle cx="3" cy="3" r="3" fill={coral} opacity="0.6" /></svg>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '2px' }}>
-                                <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '21px', color: textPrimary, lineHeight: 1.3, margin: 0 }}>
+                                <p style={{ fontSize: '14px', color: textPrimary, lineHeight: 1.5, margin: 0 }}>
                                   {task.win_statement || task.title}
                                 </p>
                                 <div style={{ position: 'relative' }}>
@@ -896,7 +961,7 @@ export default function Home() {
               {showRecurringForm && (
                 <form onSubmit={addRecurring} style={{ marginBottom: '12px', padding: '10px', backgroundColor: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '6px', border: `1px solid ${line}` }}>
                   <input value={recurringInput} onChange={e => setRecurringInput(e.target.value)} placeholder="task name..."
-                    style={{ width: '100%', fontSize: '13px', fontFamily: 'var(--font-caveat)', padding: '4px 0', background: 'transparent', border: 'none', borderBottom: `1.5px solid ${gold}`, color: textPrimary, outline: 'none', marginBottom: '8px' }} />
+                    style={{ width: '100%', fontSize: '13px', padding: '4px 0', background: 'transparent', border: 'none', borderBottom: `1.5px solid ${gold}`, color: textPrimary, outline: 'none', marginBottom: '8px' }} />
                   <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
                     {(['daily', 'weekly'] as const).map(f => (
                       <button key={f} type="button" onClick={() => setRecurringFreq(f)}
@@ -906,13 +971,16 @@ export default function Home() {
                     ))}
                   </div>
                   {recurringFreq === 'weekly' && (
-                    <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
-                      {DAYS.map((d, i) => (
-                        <button key={i} type="button" onClick={() => setRecurringDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])}
-                          style={{ width: '24px', height: '24px', borderRadius: '50%', fontSize: '9px', fontWeight: 700, border: `1.5px solid ${recurringDays.includes(i) ? coral : line}`, background: recurringDays.includes(i) ? coral : 'transparent', color: recurringDays.includes(i) ? '#fff' : textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                          {d}
-                        </button>
-                      ))}
+                    <div style={{ marginBottom: '8px' }}>
+                      <p style={{ fontSize: '10px', color: textMuted, marginBottom: '4px' }}>which day?</p>
+                      <div style={{ display: 'flex', gap: '3px' }}>
+                        {DAYS.map((d, i) => (
+                          <button key={i} type="button" onClick={() => setRecurringDays([i])}
+                            style={{ width: '24px', height: '24px', borderRadius: '50%', fontSize: '9px', fontWeight: 700, border: `1.5px solid ${recurringDays.includes(i) ? coral : line}`, background: recurringDays.includes(i) ? coral : 'transparent', color: recurringDays.includes(i) ? '#fff' : textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                            {d}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <button type="submit" disabled={!recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0)} className="btn-press"
@@ -929,7 +997,7 @@ export default function Home() {
                   <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0 }}><circle cx="3" cy="3" r="3" fill={gold} opacity="0.5" /></svg>
                   <span style={{ flex: 1, fontSize: '12px', color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
                   <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: textMuted, flexShrink: 0 }}>
-                    {r.frequency === 'daily' ? 'daily' : (r.days_of_week ?? []).map(d => DAYS[d]).join(' ')}
+                    {r.frequency === 'daily' ? 'weekdays' : (r.days_of_week ?? []).map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')}
                   </span>
                   <button onClick={() => deleteRecurring(r.id)} className={isMobile ? '' : 'opacity-0 group-hover:opacity-100'} title="Delete repeating task" style={{ color: dark ? '#5a4f40' : '#d4a8a0', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', transition: 'opacity 0.2s, color 0.2s', flexShrink: 0 }}
                     onMouseEnter={e => (e.currentTarget.style.color = coral)}
