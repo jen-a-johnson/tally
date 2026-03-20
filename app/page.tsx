@@ -714,6 +714,24 @@ export default function Home() {
                       : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 1014 9.5z" stroke={gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     }
                   </button>
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setShowSettings(s => !s)} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '4px', display: 'flex', alignItems: 'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke={gold} strokeWidth="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke={gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
+                    {showSettings && (
+                      <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowSettings(false)} />
+                      <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '8px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '12px 16px', minWidth: '200px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '10px' }}>Settings</div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: textPrimary }}>
+                          <input type="checkbox" checked={timeTracking} onChange={toggleTimeTracking} style={{ accentColor: coral }} />
+                          Time tracking
+                        </label>
+                        <p style={{ fontSize: '11px', color: textMuted, marginTop: '4px', lineHeight: 1.4 }}>Log minutes spent when completing tasks</p>
+                      </div>
+                      </>
+                    )}
+                  </div>
                   <button onClick={() => supabase.auth.signOut()} className="btn-press" style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s' }} onMouseEnter={e => { e.currentTarget.style.color = coral; e.currentTarget.style.borderColor = coral }} onMouseLeave={e => { e.currentTarget.style.color = textMuted; e.currentTarget.style.borderColor = line }}>
                     Sign out
                   </button>
@@ -920,7 +938,7 @@ export default function Home() {
                                       <>
                                       <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setEditingTime(null)} />
                                       <form
-                                        style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '8px 10px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                        style={{ position: 'absolute', ...(isMobile ? { right: 0 } : { left: 0 }), top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '8px 10px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
                                         onSubmit={e => {
                                           e.preventDefault()
                                           const h = parseInt(editTimeHours) || 0
