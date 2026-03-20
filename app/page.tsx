@@ -17,6 +17,7 @@ interface Task {
   completed_at: string | null
   created_at: string
   due_date: string | null
+  time_minutes: number | null
 }
 
 interface StreakData {
@@ -283,6 +284,10 @@ export default function Home() {
   const [recurringFreq, setRecurringFreq] = useState<'daily' | 'weekly'>('daily')
   const [recurringDays, setRecurringDays] = useState<number[]>([])
   const [recurringSaving, setRecurringSaving] = useState(false)
+  const [timeTracking, setTimeTracking] = useState(false)
+  const [timePrompt, setTimePrompt] = useState<{ taskId: string; task: Task } | null>(null)
+  const [timeInput, setTimeInput] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -355,7 +360,11 @@ export default function Home() {
     fetchWins(1)
     fetch('https://wttr.in/?format=%C,+%t&u', { signal: AbortSignal.timeout(4000) })
       .then(r => r.text()).then(t => { const w = t.trim(); if (!w.includes('Unknown') && !w.includes('please try') && w.length < 60) setWeather(w) }).catch(() => {})
-  }, [fetchWins, session])
+    // Fetch user settings
+    authFetch('/api/settings').then(r => r.json()).then(data => {
+      if (data.time_tracking_enabled) setTimeTracking(true)
+    }).catch(() => {})
+  }, [fetchWins, session, authFetch])
 
   useEffect(() => {
     const list = dark ? DARK_GREETINGS : LIGHT_GREETINGS
@@ -404,7 +413,17 @@ export default function Home() {
     setLoading(false)
   }
 
-  async function completeTask(task: Task) {
+  function completeTask(task: Task) {
+    if (timeTracking) {
+      setTimePrompt({ taskId: task.id, task })
+      setTimeInput('')
+      return
+    }
+    doCompleteTask(task)
+  }
+
+  async function doCompleteTask(task: Task, minutes?: number) {
+    setTimePrompt(null)
     setEnhancing(task.id)
     try {
       let statement = task.title
@@ -415,7 +434,9 @@ export default function Home() {
         statement = data.statement || task.title
         category = data.category || 'Other'
       } catch { /* fall back to raw title */ }
-      await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, completed: true, win_statement: statement, category }) })
+      const patch: Record<string, unknown> = { id: task.id, completed: true, win_statement: statement, category }
+      if (minutes !== undefined && minutes > 0) patch.time_minutes = minutes
+      await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify(patch) })
       setEnhancing(null)
       setCompleting(task.id)
       await new Promise(r => setTimeout(r, 600))
@@ -445,6 +466,12 @@ export default function Home() {
     setWins(prev => prev.filter(w => w.id !== id))
     setWinsTotal(t => t - 1)
     await authFetch('/api/tasks', { method: 'DELETE', body: JSON.stringify({ id }) })
+  }
+
+  async function toggleTimeTracking() {
+    const next = !timeTracking
+    setTimeTracking(next)
+    await authFetch('/api/settings', { method: 'PATCH', body: JSON.stringify({ time_tracking_enabled: next }) })
   }
 
   async function updateCategory(id: string, category: string) {
@@ -720,6 +747,21 @@ export default function Home() {
                     : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 1014 9.5z" stroke={gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   }
                 </button>
+                <div style={{ position: 'relative' }}>
+                  <button onClick={() => setShowSettings(s => !s)} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '4px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke={gold} strokeWidth="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke={gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  {showSettings && (
+                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '8px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '12px 16px', minWidth: '200px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '10px' }}>Settings</div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: textPrimary }}>
+                        <input type="checkbox" checked={timeTracking} onChange={toggleTimeTracking} style={{ accentColor: coral }} />
+                        Time tracking
+                      </label>
+                      <p style={{ fontSize: '11px', color: textMuted, marginTop: '4px', lineHeight: 1.4 }}>Log minutes spent when completing tasks</p>
+                    </div>
+                  )}
+                </div>
                 <button onClick={() => supabase.auth.signOut()} className="btn-press" style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, background: 'none', border: `1.5px solid ${line}`, borderRadius: '3px', padding: '5px 10px', cursor: 'pointer', transition: 'color 0.2s, border-color 0.2s' }} onMouseEnter={e => { e.currentTarget.style.color = coral; e.currentTarget.style.borderColor = coral }} onMouseLeave={e => { e.currentTarget.style.color = textMuted; e.currentTarget.style.borderColor = line }}>
                   Sign out
                 </button>
@@ -833,7 +875,15 @@ export default function Home() {
                     {/* Grouped wins list */}
                     {Object.entries(groupByDate(wins)).map(([date, dayWins]) => (
                       <div key={date} style={{ marginBottom: '20px' }}>
-                        <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>{date}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, margin: 0 }}>{date}</p>
+                          {(() => { const total = dayWins.reduce((sum, t) => sum + (t.time_minutes || 0), 0); return total > 0 ? (
+                            <span style={{ fontSize: '10px', fontWeight: 600, color: textMuted, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                              {total >= 60 ? `${Math.floor(total / 60)}h ${total % 60 > 0 ? `${total % 60}m` : ''}` : `${total}m`}
+                            </span>
+                          ) : null })()}
+                        </div>
                         {dayWins.map(task => (
                           <div key={task.id} className="group win-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', borderBottom: `1px solid ${line}`, padding: '11px 0', position: 'relative', zIndex: editingCategory === task.id ? 10 : 0 }}>
                             <svg width="6" height="6" viewBox="0 0 6 6" style={{ flexShrink: 0, marginTop: '10px' }}><circle cx="3" cy="3" r="3" fill={coral} opacity="0.6" /></svg>
@@ -850,6 +900,12 @@ export default function Home() {
                                       onClose={() => setEditingCategory(null)} />
                                   )}
                                 </div>
+                                {task.time_minutes != null && task.time_minutes > 0 && (
+                                  <span style={{ fontSize: '10px', fontWeight: 600, color: textMuted, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                    {task.time_minutes >= 60 ? `${Math.floor(task.time_minutes / 60)}h ${task.time_minutes % 60 > 0 ? `${task.time_minutes % 60}m` : ''}` : `${task.time_minutes}m`}
+                                  </span>
+                                )}
                               </div>
                               {task.win_statement && (
                                 <p style={{ fontSize: '11px', color: textMuted, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '220px' : '100%' }}>from: {task.title}</p>
@@ -1030,6 +1086,51 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Time entry prompt */}
+      {timePrompt && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          onClick={() => setTimePrompt(null)}>
+          <div style={{ backgroundColor: paper, borderRadius: '8px', padding: '24px', maxWidth: '320px', width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: gold, marginBottom: '8px' }}>Log Time</div>
+            <p style={{ fontSize: '14px', color: textPrimary, marginBottom: '16px', lineHeight: 1.4 }}>{timePrompt.task.title}</p>
+            <form onSubmit={e => {
+              e.preventDefault()
+              const mins = parseInt(timeInput)
+              doCompleteTask(timePrompt.task, isNaN(mins) ? undefined : mins)
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <input
+                  autoFocus
+                  type="number"
+                  min="0"
+                  value={timeInput}
+                  onChange={e => setTimeInput(e.target.value)}
+                  placeholder="0"
+                  style={{ width: '80px', fontSize: '24px', fontFamily: 'Georgia, serif', fontWeight: 700, textAlign: 'center', color: textPrimary, background: 'transparent', border: 'none', borderBottom: `2px solid ${gold}`, outline: 'none', padding: '4px 0' }}
+                />
+                <span style={{ fontSize: '13px', color: textMuted }}>minutes</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" onClick={() => doCompleteTask(timePrompt.task)} className="btn-press"
+                  style={{ flex: 1, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '8px', border: `1.5px solid ${line}`, borderRadius: '4px', background: 'transparent', color: textMuted, cursor: 'pointer' }}>
+                  Skip
+                </button>
+                <button type="submit" className="btn-press"
+                  style={{ flex: 1, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '8px', border: 'none', borderRadius: '4px', backgroundColor: coral, color: '#fff', cursor: 'pointer' }}>
+                  Log &amp; Complete
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Close settings dropdown when clicking outside */}
+      {showSettings && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowSettings(false)} />
+      )}
     </main>
   )
 }
