@@ -282,6 +282,7 @@ export default function Home() {
   const [recurringInput, setRecurringInput] = useState('')
   const [recurringFreq, setRecurringFreq] = useState<'daily' | 'weekly'>('daily')
   const [recurringDays, setRecurringDays] = useState<number[]>([])
+  const [recurringSaving, setRecurringSaving] = useState(false)
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -462,7 +463,8 @@ export default function Home() {
 
   async function addRecurring(e: React.FormEvent) {
     e.preventDefault()
-    if (!recurringInput.trim()) return
+    if (!recurringInput.trim() || recurringSaving) return
+    setRecurringSaving(true)
     const title = recurringInput.trim()
     const freq = recurringFreq
     const days = recurringFreq === 'weekly' ? recurringDays : []
@@ -489,6 +491,7 @@ export default function Home() {
     setRecurringInput('')
     setRecurringDays([])
     setShowRecurringForm(false)
+    setRecurringSaving(false)
     await fetchRecurring()
   }
 
@@ -995,9 +998,9 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  <button type="submit" disabled={!recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0)} className="btn-press"
-                    style={{ width: '100%', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: !recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0) ? 0.3 : 1, transition: 'opacity 0.2s' }}>
-                    Save
+                  <button type="submit" disabled={!recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0) || recurringSaving} className="btn-press"
+                    style={{ width: '100%', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px', backgroundColor: coral, color: '#fff', border: 'none', borderRadius: '3px', cursor: recurringSaving ? 'default' : 'pointer', opacity: !recurringInput.trim() || (recurringFreq === 'weekly' && recurringDays.length === 0) || recurringSaving ? 0.3 : 1, transition: 'opacity 0.2s' }}>
+                    {recurringSaving ? 'Saving...' : 'Save'}
                   </button>
                 </form>
               )}
