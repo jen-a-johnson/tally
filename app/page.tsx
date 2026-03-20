@@ -496,17 +496,10 @@ export default function Home() {
   }
 
   async function deleteRecurring(id: string) {
-    const template = recurring.find(r => r.id === id)
     setRecurring(prev => prev.filter(r => r.id !== id))
     await authFetch('/api/recurring', { method: 'DELETE', body: JSON.stringify({ id }) })
-    // Also remove today's spawned task with the same title if it's still pending
-    if (template) {
-      const match = pending.find(t => t.title === template.title)
-      if (match) {
-        await authFetch('/api/tasks', { method: 'DELETE', body: JSON.stringify({ id: match.id }) })
-        await fetchPending(selectedDate)
-      }
-    }
+    // API cleans up all spawned pending tasks — refresh the current view
+    await fetchPending(selectedDate)
   }
 
   async function spawnRecurring(date?: string) {
@@ -820,8 +813,11 @@ export default function Home() {
                         ))}
                       </div>
 
-                      <button onClick={generateRecap} disabled={recapLoading} className={`btn-press ${recapLoading ? 'recap-loading' : ''}`} style={{ width: '100%', padding: '11px', border: `2px dashed ${gold}`, borderLeftWidth: '3px', borderLeftStyle: 'solid', color: gold, background: 'transparent', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.7 : 1, transition: 'opacity 0.2s, border-color 0.2s' }}>
-                        {recapLoading ? 'writing your recap...' : `Recap — ${PERIOD_LABELS[recapPeriod]}`}
+                      <button onClick={generateRecap} disabled={recapLoading} className={`btn-press ${recapLoading ? 'recap-loading' : ''}`} style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: gold, color: dark ? '#1a1714' : '#faf6ed', borderRadius: '4px', cursor: recapLoading ? 'default' : 'pointer', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: recapLoading ? 0.7 : 1, transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.15s', boxShadow: '0 2px 8px rgba(201,165,90,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                        onMouseEnter={e => { if (!recapLoading) e.currentTarget.style.boxShadow = '0 4px 16px rgba(201,165,90,0.45)' }}
+                        onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(201,165,90,0.3)')}>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                        {recapLoading ? 'writing your recap...' : `Generate Recap`}
                       </button>
 
                       {recap && (
@@ -860,7 +856,7 @@ export default function Home() {
                               )}
                             </div>
                             {/* Trash */}
-                            <button onClick={() => deleteWin(task.id)} className="opacity-0 group-hover:opacity-100" title="Delete win" style={{ color: dark ? '#5a4f40' : '#d4a8a0', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', transition: 'opacity 0.2s, color 0.2s', flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#c94f38')} onMouseLeave={e => (e.currentTarget.style.color = dark ? '#5a4f40' : '#d4a8a0')}>
+                            <button onClick={() => deleteWin(task.id)} className={isMobile ? '' : 'opacity-0 group-hover:opacity-100'} title="Delete win" style={{ color: dark ? '#5a4f40' : '#d4a8a0', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', transition: 'opacity 0.2s, color 0.2s', flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#c94f38')} onMouseLeave={e => (e.currentTarget.style.color = dark ? '#5a4f40' : '#d4a8a0')}>
                               <svg width="13" height="14" viewBox="0 0 13 14" fill="none">
                                 <path d="M1 3.5h11M4.5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M5.5 6.5v4M7.5 6.5v4M2 3.5l.8 8a1 1 0 001 .9h5.4a1 1 0 001-.9l.8-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>

@@ -54,9 +54,28 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const sb = getSupabase(getToken(req))
   const { id } = await req.json()
+
+  // Get the template title before deleting so we can clean up spawned tasks
+  const { data: template } = await sb.from('recurring_tasks').select('title').eq('id', id).single()
   const { error } = await sb.from('recurring_tasks').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+
+  // Remove all pending (uncompleted) tasks with the same title
+  let cleaned = 0
+  if (template?.title) {
+    const { data: spawned } = await sb
+      .from('tasks')
+      .select('id')
+      .eq('title', template.title)
+      .eq('completed', false)
+    if (spawned && spawned.length > 0) {
+      const ids = spawned.map(t => t.id)
+      await sb.from('tasks').delete().in('id', ids)
+      cleaned = ids.length
+    }
+  }
+
+  return NextResponse.json({ success: true, cleaned })
 }
 
 // PATCH to spawn today's recurring tasks
