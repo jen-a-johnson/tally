@@ -337,8 +337,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!mounted || !session) return
-    fetchPending(selectedDate)
-  }, [selectedDay, mounted, fetchPending, selectedDate, session])
+    // Spawn recurring tasks for the selected day, then fetch
+    spawnRecurring(selectedDate).then(() => fetchPending(selectedDate))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay, mounted, selectedDate, session])
 
   useEffect(() => {
     if (!session) return
@@ -461,19 +463,22 @@ export default function Home() {
       method: 'POST',
       body: JSON.stringify({ title, frequency: freq, days_of_week: days }),
     })
-    // Immediately spawn the task for today if it matches the schedule
-    const todayDow = new Date().getDay()
-    const isWeekday = todayDow >= 1 && todayDow <= 5
-    const shouldSpawnToday = (freq === 'daily' && isWeekday) || (freq === 'weekly' && days.includes(todayDow))
-    if (shouldSpawnToday) {
-      const today = new Date().toISOString().split('T')[0]
-      // Check if a task with this title already exists for today
-      const existing = pending.find(t => t.title === title)
-      if (!existing) {
-        await authFetch('/api/tasks', { method: 'POST', body: JSON.stringify({ title, due_date: today }) })
-        await fetchPending(selectedDate)
+    // Spawn the task for applicable days in the current week
+    if (freq === 'daily') {
+      // Spawn for each weekday (Mon-Fri)
+      for (let d = 1; d <= 5; d++) {
+        const date = getDateForDay(d)
+        await authFetch('/api/recurring', { method: 'PATCH', body: JSON.stringify({ date }) })
+        // Clear the spawn cache so switching days will show them
+        localStorage.removeItem(`tally-spawn-${date}`)
       }
+    } else if (freq === 'weekly' && days.length > 0) {
+      // Spawn for the selected day this week
+      const date = getDateForDay(days[0])
+      await authFetch('/api/recurring', { method: 'PATCH', body: JSON.stringify({ date }) })
+      localStorage.removeItem(`tally-spawn-${date}`)
     }
+    await fetchPending(selectedDate)
     setRecurringInput('')
     setRecurringDays([])
     setShowRecurringForm(false)
@@ -494,14 +499,14 @@ export default function Home() {
     }
   }
 
-  async function spawnRecurring() {
+  async function spawnRecurring(date?: string) {
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const spawnKey = `tally-spawn-${today}`
+      const targetDate = date || new Date().toISOString().split('T')[0]
+      const spawnKey = `tally-spawn-${targetDate}`
       if (localStorage.getItem(spawnKey)) return
-      const res = await authFetch('/api/recurring', { method: 'PATCH', body: JSON.stringify({ date: today }) })
+      const res = await authFetch('/api/recurring', { method: 'PATCH', body: JSON.stringify({ date: targetDate }) })
       const { spawned } = await res.json()
-      if (spawned > 0) await fetchPending(getDateForDay(new Date().getDay()))
+      if (spawned > 0) await fetchPending(targetDate)
       localStorage.setItem(spawnKey, '1')
     } catch { /* table may not exist yet */ }
   }
