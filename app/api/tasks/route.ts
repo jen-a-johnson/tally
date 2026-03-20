@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   const sb = getSupabase(getToken(req))
-  const { id, completed, win_statement, category, priority } = await req.json()
+  const { id, completed, win_statement, category, priority, time_minutes } = await req.json()
   const update: Record<string, unknown> = {}
   if (completed !== undefined) update.completed = completed
   if (win_statement) {
@@ -91,6 +91,7 @@ export async function PATCH(req: Request) {
   }
   if (category)  update.category = category
   if (priority !== undefined) update.priority = priority
+  if (time_minutes !== undefined) update.time_minutes = time_minutes
 
   const { data, error } = await sb
     .from('tasks')
