@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, DragEvent } from 'react'
 import { createClient, Session } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -18,6 +18,7 @@ interface Task {
   created_at: string
   due_date: string | null
   time_minutes: number | null
+  sort_order: number | null
 }
 
 interface StreakData {
@@ -292,6 +293,9 @@ export default function Home() {
   const [editingTime, setEditingTime] = useState<string | null>(null)
   const [editTimeHours, setEditTimeHours] = useState('')
   const [editTimeMinutes, setEditTimeMinutes] = useState('')
+  const [priorityDropdown, setPriorityDropdown] = useState<string | null>(null)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -456,10 +460,11 @@ export default function Home() {
     }
   }
 
-  async function cyclePriority(task: Task) {
-    const next = ((task.priority ?? 2) % 3) + 1
-    setPending(prev => prev.map(t => t.id === task.id ? { ...t, priority: next } : t))
-    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, priority: next }) })
+  async function setPriorityTo(task: Task, level: number) {
+    setPriorityDropdown(null)
+    if ((task.priority ?? 2) === level) return
+    setPending(prev => prev.map(t => t.id === task.id ? { ...t, priority: level } : t))
+    await authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: task.id, priority: level }) })
   }
 
   async function deleteTask(id: string) {
@@ -592,7 +597,31 @@ export default function Home() {
     return acc
   }, {})
 
-  const sortedPending = [...pending].sort((a, b) => (a.priority ?? 2) - (b.priority ?? 2))
+  const sortedPending = [...pending].sort((a, b) => {
+    const sa = a.sort_order ?? 999999
+    const sb = b.sort_order ?? 999999
+    if (sa !== sb) return sa - sb
+    return (a.priority ?? 2) - (b.priority ?? 2)
+  })
+
+  function handleDragEnd() {
+    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
+      const reordered = [...sortedPending]
+      const [moved] = reordered.splice(dragIdx, 1)
+      reordered.splice(dragOverIdx, 0, moved)
+      const updated = reordered.map((t, i) => ({ ...t, sort_order: i }))
+      setPending(prev => prev.map(t => {
+        const u = updated.find(u => u.id === t.id)
+        return u ? u : t
+      }))
+      // Persist sort orders
+      updated.forEach((t, i) => {
+        authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: t.id, sort_order: i }) })
+      })
+    }
+    setDragIdx(null)
+    setDragOverIdx(null)
+  }
 
   // Theme
   const bg         = dark ? '#1a1714' : '#f7f1e3'
@@ -840,11 +869,39 @@ export default function Home() {
                   const pc = dark ? PRIORITY_CONFIG[p].darkColor : PRIORITY_CONFIG[p].color
                   return (
                     <SwipeableTaskRow key={task.id} onSwipeRight={() => completeTask(task)} onSwipeLeft={() => deleteTask(task.id)} disabled={!!enhancing || !!completing}>
-                      <div className={`group ${completing !== task.id ? 'task-row' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s', animationDelay: `${i * 0.05}s`, backgroundColor: paper }}>
-                        <span style={{ fontSize: '11px', color: gold, width: '16px', flexShrink: 0, textAlign: 'right' }}>{i + 1}</span>
-                        <button onClick={() => cyclePriority(task)} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
-                          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
-                        </button>
+                      <div
+                        draggable
+                        onDragStart={(e: DragEvent<HTMLDivElement>) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move'; e.currentTarget.style.opacity = '0.4' }}
+                        onDragEnd={(e: DragEvent<HTMLDivElement>) => { e.currentTarget.style.opacity = '1'; handleDragEnd() }}
+                        onDragOver={(e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragOverIdx(i) }}
+                        className={`group ${completing !== task.id ? 'task-row' : ''}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, borderTop: dragOverIdx === i && dragIdx !== null && dragIdx !== i ? `2px solid ${coral}` : '2px solid transparent', padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s, border-top 0.15s', animationDelay: `${i * 0.05}s`, backgroundColor: paper, cursor: 'grab' }}
+                      >
+                        <span style={{ fontSize: '11px', color: gold, width: '16px', flexShrink: 0, textAlign: 'right', pointerEvents: 'none' }}>{i + 1}</span>
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <button onClick={() => setPriorityDropdown(priorityDropdown === task.id ? null : task.id)} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
+                            <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
+                          </button>
+                          {priorityDropdown === task.id && (
+                            <>
+                              <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setPriorityDropdown(null)} />
+                              <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '4px 0', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '90px' }}>
+                                {([1, 2, 3] as const).map(level => {
+                                  const cfg = PRIORITY_CONFIG[level]
+                                  const lc = dark ? cfg.darkColor : cfg.color
+                                  return (
+                                    <button key={level} onClick={() => setPriorityTo(task, level)} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 12px', border: 'none', background: p === level ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent', cursor: 'pointer', fontSize: '12px', fontWeight: p === level ? 700 : 400, color: textPrimary, transition: 'background 0.1s' }}
+                                      onMouseEnter={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                                      onMouseLeave={e => e.currentTarget.style.background = p === level ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent'}>
+                                      <svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={level === 3 ? 'none' : lc} stroke={lc} strokeWidth="1.5" /></svg>
+                                      {cfg.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </>
+                          )}
+                        </div>
                         <button onClick={() => completeTask(task)} disabled={!!enhancing} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${completing === task.id ? '#6db08a' : gold}`, background: completing === task.id ? '#6db08a' : 'transparent', cursor: enhancing ? 'default' : 'pointer', opacity: enhancing && enhancing !== task.id ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s' }}
                           onMouseEnter={e => { if (!enhancing) e.currentTarget.style.borderColor = '#6db08a' }}
                           onMouseLeave={e => { if (!enhancing && completing !== task.id) e.currentTarget.style.borderColor = gold }}>
@@ -1009,15 +1066,15 @@ export default function Home() {
           {/* Sidebar */}
           <div style={{ backgroundColor: sidebarBg, padding: isMobile ? '20px 16px 32px' : '28px 24px 48px', borderTop: isMobile ? `1px solid ${line}` : 'none', transition: 'background-color 0.4s' }}>
             {mounted && <>
-              <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '22px', color: textPrimary, lineHeight: 1.3, marginBottom: '4px' }}>
+              <p style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 700, color: textPrimary, lineHeight: 1.3, marginBottom: '4px' }}>
                 {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
               </p>
-              <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '17px', color: textMuted, marginBottom: '4px' }}>
+              <p style={{ fontFamily: 'Georgia, serif', fontSize: '15px', color: textMuted, marginBottom: '4px' }}>
                 {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
             </>}
-            {weather && <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '16px', color: textMuted, marginBottom: '16px' }}>{weather}</p>}
-            {greeting && <p style={{ fontFamily: 'var(--font-caveat)', fontSize: '17px', color: dark ? gold : '#8a7560', fontStyle: 'italic', lineHeight: 1.4, marginBottom: '24px' }}>{greeting}</p>}
+            {weather && <p style={{ fontFamily: 'Georgia, serif', fontSize: '14px', color: textMuted, marginBottom: '16px' }}>{weather}</p>}
+            {greeting && <p style={{ fontFamily: 'Georgia, serif', fontSize: '15px', color: dark ? gold : '#8a7560', fontStyle: 'italic', lineHeight: 1.5, marginBottom: '24px' }}>{greeting}</p>}
 
             {/* Streak */}
             {streak && streak.currentStreak > 0 && (

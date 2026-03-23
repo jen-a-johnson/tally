@@ -32,6 +32,7 @@ export async function GET(req: Request) {
       .from('tasks')
       .select('*')
       .eq('completed', false)
+      .order('sort_order', { ascending: true, nullsFirst: true })
       .order('priority', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
     if (date && date !== today) {
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   const sb = getSupabase(getToken(req))
-  const { id, completed, win_statement, category, priority, time_minutes } = await req.json()
+  const { id, completed, win_statement, category, priority, time_minutes, sort_order } = await req.json()
   const update: Record<string, unknown> = {}
   if (completed !== undefined) update.completed = completed
   if (win_statement) {
@@ -92,6 +93,7 @@ export async function PATCH(req: Request) {
   if (category)  update.category = category
   if (priority !== undefined) update.priority = priority
   if (time_minutes !== undefined) update.time_minutes = time_minutes
+  if (sort_order !== undefined) update.sort_order = sort_order
 
   const { data, error } = await sb
     .from('tasks')
