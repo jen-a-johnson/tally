@@ -18,7 +18,6 @@ interface Task {
   created_at: string
   due_date: string | null
   time_minutes: number | null
-  sort_order: number | null
 }
 
 interface StreakData {
@@ -294,8 +293,10 @@ export default function Home() {
   const [editTimeHours, setEditTimeHours] = useState('')
   const [editTimeMinutes, setEditTimeMinutes] = useState('')
   const [priorityDropdown, setPriorityDropdown] = useState<string | null>(null)
+  const [priorityDropdownPos, setPriorityDropdownPos] = useState<{ top: number; left: number } | null>(null)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  const [manualOrder, setManualOrder] = useState<string[]>([])  // task IDs in user-chosen order
 
   const todayDay    = mounted ? new Date().getDay() : 0
   const todayDate   = mounted ? getDateForDay(new Date().getDay()) : ''
@@ -597,23 +598,17 @@ export default function Home() {
     return acc
   }, {})
 
-  const sortedPending = [...pending].sort((a, b) => {
-    const sa = a.sort_order ?? 999999
-    const sb = b.sort_order ?? 999999
-    if (sa !== sb) return sa - sb
-    return (a.priority ?? 2) - (b.priority ?? 2)
-  })
+  const sortedPending = manualOrder.length > 0
+    ? manualOrder.map(id => pending.find(t => t.id === id)).filter((t): t is Task => !!t)
+        .concat(pending.filter(t => !manualOrder.includes(t.id)))
+    : [...pending].sort((a, b) => (a.priority ?? 2) - (b.priority ?? 2))
 
   function handleDragEnd() {
     if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
       const reordered = [...sortedPending]
       const [moved] = reordered.splice(dragIdx, 1)
       reordered.splice(dragOverIdx, 0, moved)
-      const updated = reordered.map((t, i) => ({ ...t, sort_order: i }))
-      setPending(prev => prev.map(t => {
-        const u = updated.find(u => u.id === t.id)
-        return u ? u : t
-      }))
+      setManualOrder(reordered.map(t => t.id))
     }
     setDragIdx(null)
     setDragOverIdx(null)
@@ -874,30 +869,15 @@ export default function Home() {
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: `1px solid ${line}`, borderTop: dragOverIdx === i && dragIdx !== null && dragIdx !== i ? `2px solid ${coral}` : '2px solid transparent', padding: '12px 0', opacity: completing === task.id ? 0 : 1, transform: completing === task.id ? 'translateX(16px)' : 'none', transition: 'opacity 0.5s, transform 0.5s, border-top 0.15s', animationDelay: `${i * 0.05}s`, backgroundColor: paper, cursor: 'grab' }}
                       >
                         <span style={{ fontSize: '11px', color: gold, width: '16px', flexShrink: 0, textAlign: 'right', pointerEvents: 'none' }}>{i + 1}</span>
-                        <div style={{ position: 'relative', flexShrink: 0 }}>
-                          <button onClick={() => setPriorityDropdown(priorityDropdown === task.id ? null : task.id)} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
-                            <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
-                          </button>
-                          {priorityDropdown === task.id && (
-                            <>
-                              <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setPriorityDropdown(null)} />
-                              <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '100%', marginTop: '4px', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '4px 0', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '90px' }}>
-                                {([1, 2, 3] as const).map(level => {
-                                  const cfg = PRIORITY_CONFIG[level]
-                                  const lc = dark ? cfg.darkColor : cfg.color
-                                  return (
-                                    <button key={level} onClick={() => setPriorityTo(task, level)} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 12px', border: 'none', background: p === level ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent', cursor: 'pointer', fontSize: '12px', fontWeight: p === level ? 700 : 400, color: textPrimary, transition: 'background 0.1s' }}
-                                      onMouseEnter={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
-                                      onMouseLeave={e => e.currentTarget.style.background = p === level ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent'}>
-                                      <svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={level === 3 ? 'none' : lc} stroke={lc} strokeWidth="1.5" /></svg>
-                                      {cfg.label}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        <button onClick={(e) => {
+                          if (priorityDropdown === task.id) { setPriorityDropdown(null); setPriorityDropdownPos(null) } else {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setPriorityDropdownPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2 })
+                            setPriorityDropdown(task.id)
+                          }
+                        }} title={`${PRIORITY_CONFIG[p].label} — click to change`} className="btn-press" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, transition: 'transform 0.15s' }}>
+                          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={p === 3 ? 'none' : pc} stroke={pc} strokeWidth="1.5" /></svg>
+                        </button>
                         <button onClick={() => completeTask(task)} disabled={!!enhancing} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${completing === task.id ? '#6db08a' : gold}`, background: completing === task.id ? '#6db08a' : 'transparent', cursor: enhancing ? 'default' : 'pointer', opacity: enhancing && enhancing !== task.id ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s' }}
                           onMouseEnter={e => { if (!enhancing) e.currentTarget.style.borderColor = '#6db08a' }}
                           onMouseLeave={e => { if (!enhancing && completing !== task.id) e.currentTarget.style.borderColor = gold }}>
@@ -917,6 +897,31 @@ export default function Home() {
                     </SwipeableTaskRow>
                   )
                 })}
+
+                {priorityDropdown && priorityDropdownPos && (() => {
+                  const task = pending.find(t => t.id === priorityDropdown)
+                  if (!task) return null
+                  const p = task.priority ?? 2
+                  return (
+                    <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => { setPriorityDropdown(null); setPriorityDropdownPos(null) }} />
+                      <div style={{ position: 'fixed', top: priorityDropdownPos.top, left: priorityDropdownPos.left, transform: 'translateX(-50%)', backgroundColor: paper, border: `1.5px solid ${line}`, borderRadius: '6px', padding: '4px 0', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '90px' }}>
+                        {([1, 2, 3] as const).map(level => {
+                          const cfg = PRIORITY_CONFIG[level]
+                          const lc = dark ? cfg.darkColor : cfg.color
+                          return (
+                            <button key={level} onClick={() => { setPriorityTo(task, level); setPriorityDropdownPos(null) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '6px 12px', border: 'none', background: p === level ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent', cursor: 'pointer', fontSize: '12px', fontWeight: p === level ? 700 : 400, color: textPrimary, transition: 'background 0.1s' }}
+                              onMouseEnter={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                              onMouseLeave={e => e.currentTarget.style.background = p === level ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') : 'transparent'}>
+                              <svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill={level === 3 ? 'none' : lc} stroke={lc} strokeWidth="1.5" /></svg>
+                              {cfg.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             )}
 
