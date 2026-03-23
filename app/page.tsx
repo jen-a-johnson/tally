@@ -614,10 +614,6 @@ export default function Home() {
         const u = updated.find(u => u.id === t.id)
         return u ? u : t
       }))
-      // Persist sort orders
-      updated.forEach((t, i) => {
-        authFetch('/api/tasks', { method: 'PATCH', body: JSON.stringify({ id: t.id, sort_order: i }) })
-      })
     }
     setDragIdx(null)
     setDragOverIdx(null)
